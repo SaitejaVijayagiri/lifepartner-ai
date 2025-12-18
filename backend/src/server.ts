@@ -97,7 +97,7 @@ const initServer = async () => {
     const { initSocket } = require('./socket');
 
     const httpServer = createServer(app);
-    initSocket(httpServer); // Initialize Socket Logic
+    initSocket(httpServer);
 
     httpServer.listen(PORT, '0.0.0.0', () => {
         console.log(`Server running on port ${PORT} at 0.0.0.0`);

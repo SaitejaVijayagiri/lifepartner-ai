@@ -1,6 +1,9 @@
 import express from 'express';
 import multer from 'multer';
-import { supabase, pool } from '../db'; // Centralized DB & Storage
+import { pool } from '../db'; // Centralized DB & Storage
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 import { AIService } from '../services/ai';
 import { sanitizeContent } from '../utils/contentFilter';
 import fs from 'fs';

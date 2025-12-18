@@ -490,7 +490,7 @@ export default function DashboardPage() {
                         </div>
 
 
-                        {myProfile && (
+                        {myProfile && (<>
                             <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-gray-200">
                                 {/* Profile Header Section */}
                                 <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-10 border-b border-gray-100 pb-8 mb-8">
@@ -690,142 +690,145 @@ export default function DashboardPage() {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                {isEditing && (
-                                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                                        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-                                            <ProfileEditor initialData={myProfile} onSave={handleProfileSave} onCancel={() => setIsEditing(false)} />
-                                        </div>
+                            {isEditing && (
+                                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                                    <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+                                        <ProfileEditor initialData={myProfile} onSave={handleProfileSave} onCancel={() => setIsEditing(false)} />
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
+                        </>
                         )}
-                    </main>
-
-            {/* Story Viewer */}
-                {viewingStory && myProfile?.stories?.length > 0 && (
-                    <StoryModal
-                        stories={myProfile.stories}
-                        initialIndex={0}
-                        user={myProfile}
-                        currentUser={myProfile}
-                        onClose={() => setViewingStory(false)}
-                        onDelete={async (storyId: string) => {
-                            try {
-                                await api.interactions.deleteStory(storyId);
-                                setMyProfile((prev: any) => ({
-                                    ...prev,
-                                    stories: prev.stories.filter((s: any) => s.id !== storyId)
-                                }));
-                                if (myProfile.stories.length <= 1) setViewingStory(false);
-                            } catch (e) {
-                                console.error(e);
-                            }
-                        }}
-                    />
-                )}
-
-                {/* Global Modals */}
-                {selectedProfile && (
-                    <ProfileModal
-                        profile={selectedProfile}
-                        currentUser={myProfile}
-                        onClose={() => setSelectedProfile(null)}
-                        onConnect={() => {
-                            api.interactions.sendInterest(selectedProfile.id);
-                            setSelectedProfile(null);
-                            toast.success(`Interest sent to ${selectedProfile.name}!`);
-                        }}
-                        onUpgrade={() => {
-                            setSelectedProfile(null);
-                            setShowPremiumModal(true);
-                        }}
-                    />
-                )}
-
-                <PremiumModal
-                    isOpen={showPremiumModal}
-                    onClose={() => setShowPremiumModal(false)}
-                    user={myProfile}
-                    onSuccess={() => {
-                        toast.success("Welcome to Premium! 👑");
-                        loadData();
-                    }}
-                />
-
-                {/* Full Screen Reel Player Modal */}
-                {viewingReel && (
-                    <div
-                        className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-300"
-                        onClick={() => setViewingReel(null)}
-                    >
-                        <div className="relative w-full max-w-[450px] h-[calc(100vh-80px)] max-h-[800px] bg-black rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-                            <div className="absolute top-4 right-4 z-10 flex gap-2">
-                                {/* Reel Action Buttons */}
-                                {myProfile?.reels?.includes(viewingReel) && (
-                                    <button
-                                        className="bg-red-600/80 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-lg"
-                                        onClick={async (e) => {
-                                            e.stopPropagation();
-                                            if (confirm("Delete this reel?")) {
-                                                try {
-                                                    await api.profile.deleteReel(viewingReel);
-                                                    toast.success("Reel deleted");
-                                                    setViewingReel(null);
-                                                    const u = await api.profile.getMe();
-                                                    setMyProfile(u);
-                                                } catch (err) {
-                                                    toast.error("Failed to delete reel");
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
-                                )}
-                                <button
-                                    className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                                    onClick={() => setViewingReel(null)}
-                                >
-                                    <X size={24} />
-                                </button>
-                            </div>
-                            <video
-                                src={viewingReel.startsWith('http') ? viewingReel : `http://localhost:4000${viewingReel}`}
-                                className="w-full h-full object-contain"
-                                controls
-                                autoPlay
-                            />
-                        </div>
                     </div>
                 )}
+            </main>
 
-                {/* Chat & Video Modals */}
-                {activeChat && !isVideoCall && (
-                    <ChatWindow
-                        connectionId={activeChat.interactionId}
-                        partner={activeChat.partner}
-                        onClose={() => setActiveChat(null)}
-                        onVideoCall={() => setIsVideoCall(true)}
-                    />
-                )}
+            {/* Story Viewer */}
+            {viewingStory && myProfile?.stories?.length > 0 && (
+                <StoryModal
+                    stories={myProfile.stories}
+                    initialIndex={0}
+                    user={myProfile}
+                    currentUser={myProfile}
+                    onClose={() => setViewingStory(false)}
+                    onDelete={async (storyId: string) => {
+                        try {
+                            await api.interactions.deleteStory(storyId);
+                            setMyProfile((prev: any) => ({
+                                ...prev,
+                                stories: prev.stories.filter((s: any) => s.id !== storyId)
+                            }));
+                            if (myProfile.stories.length <= 1) setViewingStory(false);
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }}
+                />
+            )}
+
+            {/* Global Modals */}
+            {selectedProfile && (
+                <ProfileModal
+                    profile={selectedProfile}
+                    currentUser={myProfile}
+                    onClose={() => setSelectedProfile(null)}
+                    onConnect={() => {
+                        api.interactions.sendInterest(selectedProfile.id);
+                        setSelectedProfile(null);
+                        toast.success(`Interest sent to ${selectedProfile.name}!`);
+                    }}
+                    onUpgrade={() => {
+                        setSelectedProfile(null);
+                        setShowPremiumModal(true);
+                    }}
+                />
+            )}
+
+            <PremiumModal
+                isOpen={showPremiumModal}
+                onClose={() => setShowPremiumModal(false)}
+                user={myProfile}
+                onSuccess={() => {
+                    toast.success("Welcome to Premium! 👑");
+                    loadData();
+                }}
+            />
+
+            {/* Full Screen Reel Player Modal */}
+            {viewingReel && (
+                <div
+                    className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-300"
+                    onClick={() => setViewingReel(null)}
+                >
+                    <div className="relative w-full max-w-[450px] h-[calc(100vh-80px)] max-h-[800px] bg-black rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="absolute top-4 right-4 z-10 flex gap-2">
+                            {/* Reel Action Buttons */}
+                            {myProfile?.reels?.includes(viewingReel) && (
+                                <button
+                                    className="bg-red-600/80 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (confirm("Delete this reel?")) {
+                                            try {
+                                                await api.profile.deleteReel(viewingReel);
+                                                toast.success("Reel deleted");
+                                                setViewingReel(null);
+                                                const u = await api.profile.getMe();
+                                                setMyProfile(u);
+                                            } catch (err) {
+                                                toast.error("Failed to delete reel");
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <Trash2 size={20} />
+                                </button>
+                            )}
+                            <button
+                                className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                                onClick={() => setViewingReel(null)}
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <video
+                            src={viewingReel.startsWith('http') ? viewingReel : `http://localhost:4000${viewingReel}`}
+                            className="w-full h-full object-contain"
+                            controls
+                            autoPlay
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Chat & Video Modals */}
+            {activeChat && !isVideoCall && (
+                <ChatWindow
+                    connectionId={activeChat.interactionId}
+                    partner={activeChat.partner}
+                    onClose={() => setActiveChat(null)}
+                    onVideoCall={() => setIsVideoCall(true)}
+                />
+            )}
 
 
-                {activeChat && isVideoCall && (
-                    <VideoCallModal
-                        connectionId={activeChat.interactionId}
-                        partner={activeChat.partner}
-                        onEndCall={() => setIsVideoCall(false)}
-                    />
-                )}
+            {activeChat && isVideoCall && (
+                <VideoCallModal
+                    connectionId={activeChat.interactionId}
+                    partner={activeChat.partner}
+                    onEndCall={() => setIsVideoCall(false)}
+                />
+            )}
 
-                {/* Photo Viewer */}
-                toast.error("Failed to remove connection.");
+            {/* Photo Viewer */}
+            toast.error("Failed to remove connection.");
                     }
                 }
             }}
         />
-                )
+            )
 }
         </div >
     );

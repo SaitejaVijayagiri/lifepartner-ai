@@ -50,7 +50,8 @@ router.post('/create-order', async (req, res) => {
 
     } catch (error: any) {
         console.error("Cashfree Create Order Error:", error.response?.data?.message || error.message);
-        res.status(500).json({ error: "Failed to create payment order" });
+        const detailedError = error.response?.data?.message || error.message || "Unknown Cashfree Error";
+        res.status(500).json({ error: detailedError, details: error.response?.data });
     }
 });
 

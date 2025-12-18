@@ -822,12 +822,63 @@ export default function DashboardPage() {
                 />
             )}
 
+            {/* Connections Modal */}
+            {showConnectionsModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]">
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h3 className="font-bold text-lg">My Connections</h3>
+                            <button onClick={() => setShowConnectionsModal(false)} className="p-1 hover:bg-gray-100 rounded-full">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {connections.length === 0 ? (
+                                <p className="text-center text-gray-500 py-8">No connections yet.</p>
+                            ) : (
+                                connections.map(c => (
+                                    <div key={c.interactionId} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                        <div className="flex items-center gap-3">
+                                            <img src={c.partner.photoUrl} className="w-10 h-10 rounded-full object-cover" alt="" />
+                                            <div>
+                                                <div className="font-bold">{c.partner.name}</div>
+                                                <div className="text-xs text-gray-500">Connected</div>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                            onClick={async () => {
+                                                if (!confirm("Are you sure you want to remove this connection?")) return;
+                                                try {
+                                                    await api.interactions.deleteConnection(c.interactionId);
+                                                    setConnections(prev => prev.filter(x => x.interactionId !== c.interactionId));
+                                                    toast.success("Connection removed.");
+                                                } catch (e) {
+                                                    toast.error("Failed to remove connection.");
+                                                }
+                                            }}
+                                        >
+                                            <Trash2 size={16} />
+                                        </Button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Photo Viewer */}
-            toast.error("Failed to remove connection.");
-                    }
-                }
-            }}
-        />
+            {viewingPhoto && (
+                <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingPhoto(null)}>
+                    <button className="absolute top-4 right-4 text-white/80 hover:text-white" onClick={() => setViewingPhoto(null)}>
+                        <X size={32} />
+                    </button>
+                    <img src={viewingPhoto} alt="Full View" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
+                </div>
+            )}
             )
 }
         </div >

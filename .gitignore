@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production
+build/
+dist/
+.next/
+out/
+
+# Misc
+.DS_Store
+*.pem
+*.log
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.vscode/
+.idea/
+
+# Large Uploads & Assets
+backend/uploads/
+apps/web/public/uploads/
+*.mp4
+*.MOV
+*.avi
+*.wmv
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.tar
+*.gz
+*.zip

@@ -120,5 +120,11 @@ export const api = {
             body: JSON.stringify({ toUserId, giftId, cost })
         }),
         boostProfile: () => fetchAPI('/wallet/boost', { method: 'POST' })
+    },
+    ai: {
+        getIcebreaker: (targetUserId: string) => fetchAPI('/ai/icebreaker', {
+            method: 'POST',
+            body: JSON.stringify({ userId: typeof window !== 'undefined' ? localStorage.getItem('userId') : null, targetUserId })
+        })
     }
 };

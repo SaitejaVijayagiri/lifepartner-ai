@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { api } from '@/lib/api';
 import GameModal from './GameModal';
 import { useSocket } from '@/context/SocketContext';
+import { Sparkles } from 'lucide-react';
 
 interface ChatWindowProps {
     connectionId: string;
@@ -27,6 +28,24 @@ export default function ChatWindow({ connectionId, partner, onClose, onVideoCall
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const [showGame, setShowGame] = useState(false);
+
+    // AI Wingman State
+    const [loadingAi, setLoadingAi] = useState(false);
+    const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+
+    const handleIcebreaker = async () => {
+        setLoadingAi(true);
+        try {
+            const res = await api.ai.getIcebreaker(partner.id);
+            if (res.suggestions) {
+                setAiSuggestions(res.suggestions);
+            }
+        } catch (e) {
+            console.error("AI Error", e);
+        } finally {
+            setLoadingAi(false);
+        }
+    };
 
     // Initial Load
     useEffect(() => {
@@ -192,14 +211,54 @@ export default function ChatWindow({ connectionId, partner, onClose, onVideoCall
                 )}
             </div>
 
+            {/* AI Icebreaker Suggestions */}
+            {aiSuggestions.length > 0 && (
+                <div className="p-2 bg-indigo-50 border-t border-indigo-100 animate-in slide-in-from-bottom flex flex-col gap-2">
+                    <p className="text-xs font-bold text-indigo-600 flex items-center gap-1">
+                        <Sparkles size={12} /> AI Suggestions
+                        <button onClick={() => setAiSuggestions([])} className="ml-auto text-gray-400 hover:text-gray-600">×</button>
+                    </p>
+                    <div className="flex flex-col gap-2">
+                        {aiSuggestions.map((suggestion, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => {
+                                    setInputText(suggestion);
+                                    setAiSuggestions([]);
+                                }}
+                                className="text-left text-sm bg-white border border-indigo-100 p-2 rounded-lg hover:bg-indigo-100 transition-colors text-gray-700 shadow-sm"
+                            >
+                                {suggestion}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Message Input */}
             <form
                 onSubmit={e => {
                     e.preventDefault();
                     handleSend(e);
                 }}
-                className="p-3 border-t bg-gray-50 flex gap-2"
+                className="p-3 border-t bg-gray-50 flex gap-2 items-center"
             >
+                <div className="relative group">
+                    <button
+                        type="button"
+                        onClick={handleIcebreaker}
+                        disabled={loadingAi}
+                        className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-full transition-colors disabled:opacity-50"
+                        title="AI Wingman"
+                    >
+                        {loadingAi ? <Sparkles size={20} className="animate-spin" /> : <Sparkles size={20} />}
+                    </button>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-0 mb-2 w-max px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        Ask AI for Help
+                    </div>
+                </div>
+
                 <input
                     type="text"
                     value={inputText}

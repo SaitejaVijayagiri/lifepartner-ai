@@ -10,6 +10,8 @@ import chatRoutes from './routes/chat';
 import gameRoutes from './routes/games';
 import paymentRoutes from './routes/payments';
 import walletRoutes from './routes/wallet';
+import aiRoutes from './routes/ai';
+import path from 'path';
 // import { seedDatabase } from './seed'; 
 
 dotenv.config(); // Load ENV
@@ -29,6 +31,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Legacy uploads (keeping for backward compat if needed, but we use Supabase now)
 app.use('/uploads', express.static('uploads'));
+
+app.use('/api/ai', aiRoutes);
 
 // Health Check
 app.get('/', (req, res) => {

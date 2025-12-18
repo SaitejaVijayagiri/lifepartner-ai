@@ -100,9 +100,9 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col lg:flex-row font-sans bg-white overflow-hidden">
+        <div className="min-h-screen lg:h-screen flex flex-col lg:flex-row font-sans bg-white lg:overflow-hidden">
             {/* Left Panel: Real Matrimony Image */}
-            <div className="w-full lg:w-5/12 h-1/3 lg:h-full relative">
+            <div className="w-full lg:w-5/12 h-64 lg:h-full relative flex-shrink-0">
                 <style jsx global>{`
                     input::-ms-reveal,
                     input::-ms-clear {
@@ -117,13 +117,13 @@ export default function RegisterPage() {
                 {/* Gradient Overlay for Text Readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-indigo-900/40 to-transparent flex flex-col justify-end p-8 lg:p-12 text-white">
                     <div className="mb-4 lg:mb-8">
-                        <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight mb-4">LifePartner AI</h1>
-                        <p className="text-lg lg:text-xl text-indigo-100 font-light mb-6 lg:mb-8 opacity-90">
+                        <h1 className="text-2xl lg:text-4xl font-extrabold tracking-tight mb-2 lg:mb-4">LifePartner AI</h1>
+                        <p className="text-sm lg:text-xl text-indigo-100 font-light mb-4 lg:mb-8 opacity-90 hidden lg:block">
                             "Where tradition meets technology. Find your perfect match today."
                         </p>
 
                         {/* Testimonial Quote */}
-                        <div className="border-l-4 border-indigo-500 pl-4 py-2">
+                        <div className="border-l-4 border-indigo-500 pl-4 py-2 hidden lg:block">
                             <p className="text-base lg:text-lg italic font-medium mb-2 opacity-95">"{TESTIMONIALS[activeTestimonial].quote}"</p>
                             <p className="text-xs lg:text-sm font-bold uppercase tracking-wider text-indigo-300">{TESTIMONIALS[activeTestimonial].author}</p>
                         </div>

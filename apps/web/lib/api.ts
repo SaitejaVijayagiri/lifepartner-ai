@@ -61,6 +61,11 @@ export const api = {
             headers: {} // Let browser set Content-Type for FormData
         }),
         deleteStory: (storyId: string) => fetchAPI(`/profile/stories/${storyId}`, { method: 'DELETE' }),
+        uploadVoiceBio: (formData: FormData) => fetchAPI('/profile/voice-bio', {
+            method: 'POST',
+            body: formData,
+            headers: {}
+        }),
     },
     matches: {
         getAll: () => fetchAPI('/matches/recommendations'),

@@ -128,7 +128,8 @@ router.get('/recommendations', async (req, res) => {
                 is_liked: c.is_liked || false,
                 // Premium Data (Conditionally revealed)
                 phone: me.is_premium ? (c.phone || meta.phone) : null,
-                email: me.is_premium ? (c.email || meta.email) : null
+                email: me.is_premium ? (c.email || meta.email) : null,
+                voiceBioUrl: c.voice_bio_url || null
             };
         })
             .sort((a, b) => b.score - a.score)
@@ -168,7 +169,7 @@ router.post('/search', async (req, res) => {
         // 3. Build Dynamic Query
         let sql = `
             SELECT 
-                u.id, u.email, u.phone, u.full_name, u.gender, u.age, u.location_name, u.avatar_url,
+                u.id, u.email, u.phone, u.full_name, u.gender, u.age, u.location_name, u.avatar_url, u.voice_bio_url,
                 p.metadata, p.raw_prompt
             FROM public.users u 
             LEFT JOIN public.profiles p ON u.id = p.user_id 
@@ -332,7 +333,8 @@ Params: ${params}
 
                 stories: c.stories || [],
                 phone: isPremium ? (c.phone || meta.phone) : null,
-                email: isPremium ? (c.email || meta.email) : null
+                email: isPremium ? (c.email || meta.email) : null,
+                voiceBioUrl: c.voice_bio_url || null
             };
         });
 

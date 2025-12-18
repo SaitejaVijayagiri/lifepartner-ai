@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import VoiceRecorder from './VoiceRecorder';
+import { api } from '@/lib/api';
 
 const STEPS = [
     { id: 'welcome', title: 'Welcome' },
@@ -12,6 +14,7 @@ const STEPS = [
     { id: 'family', title: 'Family Background' },
     { id: 'lifestyle', title: 'Lifestyle & Habits' },
     { id: 'partner', title: 'Partner Preferences' },
+    { id: 'voice', title: 'Voice Bio (New)' },
     { id: 'photos', title: 'Upload Photos' },
 ];
 
@@ -23,6 +26,7 @@ const QUOTES = {
     family: "Family is where life begins and love never ends.",
     lifestyle: " Habits shape our lives. Let's find someone who matches your rhythm.",
     partner: "Describe your soulmate. We'll use AI to find them.",
+    voice: "Don't just be a photo. Let them fall in love with your voice.",
     photos: "A picture is worth a thousand words. Add your best moments."
 };
 
@@ -35,6 +39,7 @@ const GRADIENTS = {
     family: "from-orange-500 to-red-600",
     lifestyle: "from-lime-600 to-green-700",
     partner: "from-pink-600 to-rose-600",
+    voice: "from-indigo-600 to-violet-800",
     photos: "from-indigo-500 to-blue-600",
 };
 
@@ -57,7 +62,8 @@ export default function ProfileWizard({ onComplete }: { onComplete: (data: any) 
         // Partner
         partnerAgeRange: '', partnerHeightRange: '', partnerIncome: '', prompt: '',
         // Photos
-        photos: []
+        photos: [],
+        voiceBioUrl: ''
     });
 
     const update = (field: string, val: any) => setData((prev: any) => ({ ...prev, [field]: val }));
@@ -269,6 +275,32 @@ export default function ProfileWizard({ onComplete }: { onComplete: (data: any) 
                                 <Input label="Pref Height" placeholder="5'2 - 5'8" value={data.partnerHeightRange} onChange={e => update('partnerHeightRange', e.target.value)} />
                                 <Input label="Min Income" placeholder="e.g. 10 LPA" value={data.partnerIncome} onChange={e => update('partnerIncome', e.target.value)} />
                             </div>
+                        </div>
+                    )}
+
+                    {/* STEP: VOICE BIO */}
+                    {stepId === 'voice' && (
+                        <div className="space-y-6 animate-in slide-in-from-right duration-500 text-center">
+                            <h3 className="text-xl font-bold text-gray-900">Record an Audio Intro 🎙️</h3>
+                            <p className="text-gray-500">Profiles with voice bios get 3x more responses.</p>
+
+                            <VoiceRecorder
+                                onRecordingComplete={async (blob) => {
+                                    // Auto-upload on recording completion
+                                    const formData = new FormData();
+                                    formData.append('audio', blob, 'voice-bio.webm');
+                                    try {
+                                        const res = await api.profile.uploadVoiceBio(formData);
+                                        if (res.audioUrl) {
+                                            update('voiceBioUrl', res.audioUrl);
+                                        }
+                                    } catch (e) {
+                                        console.error("Voice Upload Failed", e);
+                                        alert("Failed to upload voice bio");
+                                    }
+                                }}
+                                existingAudioUrl={data.voiceBioUrl}
+                            />
                         </div>
                     )}
 

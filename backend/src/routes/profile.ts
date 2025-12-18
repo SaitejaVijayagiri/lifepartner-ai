@@ -30,10 +30,10 @@ const upload = multer({
     storage,
     limits: { fileSize: 500 * 1024 * 1024 }, // 500MB Limit (High Capacity)
     fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('image/')) {
+        if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('image/') || file.mimetype.startsWith('audio/')) {
             cb(null, true);
         } else {
-            cb(new Error('Only video and image files are allowed!'));
+            cb(new Error('Only video, image, and audio files are allowed!'));
         }
     }
 });
@@ -304,6 +304,54 @@ router.post('/reel', upload.single('video'), async (req, res) => {
             fs.unlink(req.file.path, () => { });
         }
         res.status(500).json({ error: "Upload failed", details: e.message || JSON.stringify(e) });
+    }
+});
+
+// 4.5 POST /voice-bio (Upload Voice Bio)
+router.post('/voice-bio', upload.single('audio'), async (req, res) => {
+    try {
+        const userId = getUserId(req);
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        if (!req.file) return res.status(400).json({ error: "No audio file" });
+
+        const filePath = req.file.path;
+        // Use a consistent filename so user can overwrite their bio
+        const filename = `voice-bios/${userId}/bio-${Date.now()}.webm`;
+
+        console.log(`Starting Voice Bio upload: ${filename}`);
+
+        // 1. Stream to Supabase
+        const fileStream = fs.createReadStream(filePath);
+        const { data, error } = await supabase
+            .storage
+            .from('reels') // Reusing 'reels' bucket for simplicity/permissions
+            .upload(filename, fileStream, {
+                contentType: req.file.mimetype,
+                upsert: true,
+                duplex: 'half'
+            });
+
+        // 2. Cleanup
+        fs.unlink(filePath, () => { });
+
+        if (error) {
+            console.error("Supabase Voice Upload Error:", error);
+            throw error;
+        }
+
+        // 3. Get Public URL
+        const { data: { publicUrl } } = supabase.storage.from('reels').getPublicUrl(filename);
+
+        // 4. Save to DB
+        await pool.query(`UPDATE public.users SET voice_bio_url = $1 WHERE id = $2`, [publicUrl, userId]);
+
+        res.json({ success: true, audioUrl: publicUrl });
+
+    } catch (e: any) {
+        console.error("Voice Upload Error", e);
+        if (req.file && req.file.path) fs.unlink(req.file.path, () => { });
+        res.status(500).json({ error: "Upload failed" });
     }
 });
 

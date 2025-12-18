@@ -88,6 +88,9 @@ const initServer = async () => {
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND table_schema='public' AND column_name='premium_expiry') THEN 
                     ALTER TABLE public.users ADD COLUMN premium_expiry TIMESTAMP;
                 END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND table_schema='public' AND column_name='voice_bio_url') THEN 
+                    ALTER TABLE public.users ADD COLUMN voice_bio_url VARCHAR(255);
+                END IF;
 
                 -- Transactions Table (Financial Records)
                 CREATE TABLE IF NOT EXISTS public.transactions (

@@ -84,6 +84,19 @@ const initServer = async () => {
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND table_schema='public' AND column_name='premium_expiry') THEN 
                     ALTER TABLE public.users ADD COLUMN premium_expiry TIMESTAMP;
                 END IF;
+
+                -- Transactions Table (Financial Records)
+                CREATE TABLE IF NOT EXISTS public.transactions (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    user_id UUID REFERENCES public.users(id),
+                    amount DECIMAL(10, 2) NOT NULL,
+                    currency VARCHAR(10) DEFAULT 'INR',
+                    type VARCHAR(50) NOT NULL, -- DEPOSIT, SUBSCRIPTION, WITHDRAWAL
+                    status VARCHAR(50) DEFAULT 'SUCCESS',
+                    description TEXT,
+                    metadata JSONB DEFAULT '{}'::jsonb,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
             END $$;
                 -- Messages Table Self-Healing
                 -- Ensure table exists first (if not created by CREATE TABLE IF NOT EXISTS below)

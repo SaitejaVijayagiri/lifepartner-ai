@@ -89,15 +89,25 @@ router.post('/verify', async (req, res) => {
                     return res.json({ success: true, message: "Already processed" });
                 }
 
+                // Extract exact amount and currency from payment provider for accurate accounting
+                const paymentAmount = successfulPayment.payment_amount;
+                const paymentCurrency = successfulPayment.payment_currency || 'INR';
+
                 if (type === 'COINS') {
                     await client.query(
                         `UPDATE users SET coins = coins + $1 WHERE id = $2`,
                         [coins, userId]
                     );
                     await client.query(`
-                        INSERT INTO transactions (user_id, type, amount, description, metadata)
-                        VALUES ($1, 'DEPOSIT', $2, $3, $4)
-                    `, [userId, coins, `Purchased ${coins} Coins`, { orderId, paymentId: successfulPayment.cf_payment_id }]);
+                        INSERT INTO transactions (user_id, type, amount, currency, description, metadata, status)
+                        VALUES ($1, 'DEPOSIT', $2, $3, $4, $5, 'SUCCESS')
+                    `, [
+                        userId,
+                        paymentAmount,
+                        paymentCurrency,
+                        `Purchased ${coins} Coins`,
+                        { orderId, paymentId: successfulPayment.cf_payment_id, coins }
+                    ]);
                 } else {
                     await client.query(
                         `UPDATE users 
@@ -107,6 +117,18 @@ router.post('/verify', async (req, res) => {
                          WHERE id = $2`,
                         [successfulPayment.cf_payment_id, userId]
                     );
+
+                    // Log the Financial Transaction for Premium
+                    await client.query(`
+                        INSERT INTO transactions (user_id, type, amount, currency, description, metadata, status)
+                        VALUES ($1, 'SUBSCRIPTION', $2, $3, $4, $5, 'SUCCESS')
+                    `, [
+                        userId,
+                        paymentAmount,
+                        paymentCurrency,
+                        'Premium Subscription (1 Year)',
+                        { orderId, paymentId: successfulPayment.cf_payment_id }
+                    ]);
                 }
             } finally {
                 client.release();

@@ -1,65 +1,78 @@
 import express from 'express';
 import { sanitizeContent } from '../utils/contentFilter';
 
+import { pool } from '../db';
+
 const router = express.Router();
 
-// Mock In-Memory Message Store
-// Map<InteractionID, Message[]>
-const MESSAGE_STORE: Record<string, any[]> = {};
-
-router.get('/:connectionId/history', (req, res) => {
+// GET Chat History
+router.get('/:connectionId/history', async (req: any, res) => {
     const { connectionId } = req.params;
-    const history = MESSAGE_STORE[connectionId] || [];
-    res.json(history);
-});
+    const userId = req.user?.userId; // Assuming auth middleware attached this
 
-router.post('/:connectionId/send', (req, res) => {
-    const { connectionId } = req.params;
-    const { text, senderId } = req.body;
-
-    if (!MESSAGE_STORE[connectionId]) {
-        MESSAGE_STORE[connectionId] = [];
+    if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
     }
 
+    try {
+        const client = await pool.connect();
+        const result = await client.query(`
+            SELECT id, sender_id, receiver_id, content as text, timestamp 
+            FROM public.messages 
+            WHERE (sender_id = $1 AND receiver_id = $2) 
+               OR (sender_id = $2 AND receiver_id = $1)
+            ORDER BY timestamp ASC
+        `, [userId, connectionId]);
 
+        // Format for frontend
+        const history = result.rows.map(row => ({
+            id: row.id,
+            text: row.text,
+            senderId: row.sender_id,
+            timestamp: row.timestamp
+        }));
 
-    // ...
+        client.release();
+        res.json(history);
+    } catch (e) {
+        console.error("Fetch History Error", e);
+        res.status(500).json({ error: "Failed to fetch chat history" });
+    }
+});
 
-    // User Message
+// SEND Message (Fallback / API based)
+router.post('/:connectionId/send', async (req: any, res) => {
+    const { connectionId } = req.params; // receiverId
+    const { text, senderId } = req.body; // senderId usually from token, but using body for flexibility
+
+    if (!text || !senderId) {
+        return res.status(400).json({ error: "Missing text or senderId" });
+    }
+
     const cleanText = sanitizeContent(text);
 
-    const userMsg = {
-        id: Date.now().toString(),
-        text: cleanText,
-        senderId,
-        timestamp: new Date()
-    };
-    MESSAGE_STORE[connectionId].push(userMsg);
+    try {
+        const client = await pool.connect();
+        const result = await client.query(`
+            INSERT INTO public.messages (sender_id, receiver_id, content) 
+            VALUES ($1, $2, $3) 
+            RETURNING id, timestamp
+        `, [senderId, connectionId, cleanText]);
 
-    // AI / Mock Auto-Reply (Simulate the other person)
-    // Delay slightly for realism
-    setTimeout(() => {
-        const replies = [
-            "That sounds interesting! Tell me more.",
-            "I totally agree with you.",
-            "Haha, that's funny!",
-            "I'm looking for something serious too.",
-            "My family is very important to me.",
-            "Do you like traveling?",
-            "I work in IT, it's pretty busy but I love it."
-        ];
-        const randomReply = replies[Math.floor(Math.random() * replies.length)];
-
-        const replyMsg = {
-            id: (Date.now() + 1).toString(),
-            text: randomReply,
-            senderId: 'partner', // Generic partner ID for now
-            timestamp: new Date()
+        const newMessage = {
+            id: result.rows[0].id,
+            text: cleanText,
+            senderId,
+            timestamp: result.rows[0].timestamp
         };
-        MESSAGE_STORE[connectionId].push(replyMsg);
-    }, 1500);
 
-    res.json({ success: true, message: userMsg });
+        client.release();
+        res.json({ success: true, message: newMessage });
+
+    } catch (e) {
+        console.error("Send Message Error", e);
+        res.status(500).json({ error: "Failed to send message" });
+    }
 });
 
 export default router;

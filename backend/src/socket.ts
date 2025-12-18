@@ -77,14 +77,30 @@ export const initSocket = (httpServer: HttpServer) => {
         /**
          * CHAT LOGIC
          */
-        socket.on("sendMessage", ({ to, text, from }) => {
+        socket.on("sendMessage", async ({ to, text, from }) => {
             console.log(`Msg: ${from} -> ${to}: ${text}`);
-            // Emit to Receiver's Room (userId)
-            io.to(to).emit("receiveMessage", {
-                text,
-                senderId: from,
-                timestamp: new Date()
-            });
+
+            try {
+                // 1. Save to DB
+                // Assuming 'from' and 'to' are UUIDs.
+                // In a real app, 'from' should be verified from socket.user.id
+                const client = await pool.connect();
+                await client.query(
+                    `INSERT INTO public.messages (sender_id, receiver_id, content) VALUES ($1, $2, $3)`,
+                    [from, to, text]
+                );
+                client.release();
+
+                // 2. Emit to Receiver
+                io.to(to).emit("receiveMessage", {
+                    text,
+                    senderId: from,
+                    timestamp: new Date()
+                });
+            } catch (e) {
+                console.error("Message Persistence Error:", e);
+                // Optionally emit error back to sender
+            }
         });
     });
 

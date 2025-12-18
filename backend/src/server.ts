@@ -86,6 +86,21 @@ const initServer = async () => {
                 END IF;
             END $$;
         `);
+
+        // 3. Create Messages Table (Separate query to avoid block issues)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS public.messages (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                sender_id UUID NOT NULL REFERENCES public.users(id),
+                receiver_id UUID NOT NULL REFERENCES public.users(id),
+                content TEXT NOT NULL,
+                is_read BOOLEAN DEFAULT FALSE,
+                timestamp TIMESTAMP DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_messages_sender ON public.messages(sender_id);
+            CREATE INDEX IF NOT EXISTS idx_messages_receiver ON public.messages(receiver_id);
+            CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON public.messages(timestamp);
+        `);
         client.release();
         console.log("✅ Schema verified (columns verified)");
     } catch (e) {

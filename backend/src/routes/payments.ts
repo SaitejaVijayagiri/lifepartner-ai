@@ -10,14 +10,14 @@ Cashfree.XClientId = process.env.CASHFREE_APP_ID!;
 // @ts-ignore
 Cashfree.XClientSecret = process.env.CASHFREE_SECRET_KEY!;
 // @ts-ignore
-Cashfree.XEnvironment = Cashfree.Environment.SANDBOX;
+Cashfree.XEnvironment = Cashfree.Environment?.SANDBOX || "SANDBOX";
 
 // @ts-ignore
 const cashfree = new Cashfree({
     xClientId: process.env.CASHFREE_APP_ID!,
     xClientSecret: process.env.CASHFREE_SECRET_KEY!,
     // @ts-ignore
-    xEnvironment: Cashfree.Environment.SANDBOX
+    xEnvironment: Cashfree.Environment?.SANDBOX || "SANDBOX"
 });
 
 

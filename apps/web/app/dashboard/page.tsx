@@ -89,6 +89,58 @@ export default function DashboardPage() {
         loadData();
     }, []);
 
+    // Handle Payment Success/Redirect
+    useEffect(() => {
+        const verify = async () => {
+            const params = new URLSearchParams(window.location.search);
+            const orderId = params.get('order_id');
+            const type = params.get('type');
+            const coins = params.get('coins');
+
+            if (orderId) {
+                // Clear URL to prevent re-run
+                window.history.replaceState({}, '', '/dashboard');
+
+                toast.success("Verifying payment...", { duration: 2000 });
+
+                try {
+                    // We need myProfile.id, wait for it if not loaded? 
+                    // Actually api.profile.getMe() or localStorage usually has userId,
+                    // but let's assume valid auth token handles identification or we need userId explicitly.
+                    // verifyPayment expects payload with input options.
+
+                    const userId = myProfile?.id || localStorage.getItem('userId'); // Ensure we have ID
+                    if (!userId) return;
+
+                    await api.payments.verifyPayment({
+                        orderId,
+                        userId,
+                        type: type || 'COINS',
+                        coins: coins ? parseInt(coins) : 0
+                    });
+
+                    if (type === 'PREMIUM') {
+                        toast.success("🌟 Premium Activated! You are now a VIP member.");
+                        // Trigger confetti?
+                    } else {
+                        toast.success(`💰 Success! ${coins || 'Coins'} added to your wallet.`);
+                    }
+
+                    // Refresh Data
+                    loadData();
+                } catch (e: any) {
+                    console.error("Payment Verify Error", e);
+                    toast.error("Payment verification failed. Contact support if deducted.");
+                }
+            }
+        }
+
+        // Only run if we have profile or at least token check done
+        if (!loading) {
+            verify();
+        }
+    }, [loading, myProfile?.id]); // Depend on loading so we don't run before auth check
+
     const handleAccept = async (reqId: string) => {
         try {
             await api.interactions.acceptRequest(reqId);

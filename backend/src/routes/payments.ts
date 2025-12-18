@@ -35,7 +35,7 @@ router.post('/create-order', async (req, res) => {
                 customer_email: "user@example.com"
             },
             order_meta: {
-                return_url: `${req.headers.origin || 'https://lifepartner-ai.vercel.app'}/dashboard?order_id=${orderId}`
+                return_url: `${req.headers.origin || 'https://lifepartner-ai.vercel.app'}/dashboard?order_id=${orderId}&type=${req.body.type || 'COINS'}&coins=${req.body.coins || 0}`
             }
         };
 

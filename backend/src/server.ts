@@ -85,18 +85,33 @@ const initServer = async () => {
                     ALTER TABLE public.users ADD COLUMN premium_expiry TIMESTAMP;
                 END IF;
             END $$;
+                -- Messages Table Self-Healing
+                -- Ensure table exists first (if not created by CREATE TABLE IF NOT EXISTS below)
+                CREATE TABLE IF NOT EXISTS public.messages (
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY
+                );
+
+                -- Check columns
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND table_schema='public' AND column_name='sender_id') THEN 
+                    ALTER TABLE public.messages ADD COLUMN sender_id UUID REFERENCES public.users(id); 
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND table_schema='public' AND column_name='receiver_id') THEN 
+                    ALTER TABLE public.messages ADD COLUMN receiver_id UUID REFERENCES public.users(id); 
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND table_schema='public' AND column_name='content') THEN 
+                    ALTER TABLE public.messages ADD COLUMN content TEXT; 
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND table_schema='public' AND column_name='is_read') THEN 
+                    ALTER TABLE public.messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE; 
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND table_schema='public' AND column_name='timestamp') THEN 
+                    ALTER TABLE public.messages ADD COLUMN timestamp TIMESTAMP DEFAULT NOW(); 
+                END IF;
+            END $$;
         `);
 
-        // 3. Create Messages Table (Separate query to avoid block issues)
+        // 3. Create Indexes (Idempotent)
         await client.query(`
-            CREATE TABLE IF NOT EXISTS public.messages (
-                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-                sender_id UUID NOT NULL REFERENCES public.users(id),
-                receiver_id UUID NOT NULL REFERENCES public.users(id),
-                content TEXT NOT NULL,
-                is_read BOOLEAN DEFAULT FALSE,
-                timestamp TIMESTAMP DEFAULT NOW()
-            );
             CREATE INDEX IF NOT EXISTS idx_messages_sender ON public.messages(sender_id);
             CREATE INDEX IF NOT EXISTS idx_messages_receiver ON public.messages(receiver_id);
             CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON public.messages(timestamp);

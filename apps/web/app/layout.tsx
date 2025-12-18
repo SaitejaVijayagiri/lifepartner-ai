@@ -54,10 +54,7 @@ export default function RootLayout({
         <ClientProviders>
           <NetworkStatus />
           {children}
-          <Script
-            src="https://checkout.razorpay.com/v1/checkout.js"
-            strategy="lazyOnload"
-          />
+
         </ClientProviders>
       </body>
     </html>

@@ -488,339 +488,344 @@ export default function DashboardPage() {
                             </Button>
                             <Button onClick={() => setIsEditing(true)} variant="outline" className="shadow-sm flex-1 md:flex-none border-gray-300">Edit Profile</Button>
                         </div>
-                    </div>
+
 
                         {myProfile && (
-                    <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-gray-200">
-                        {/* Profile Header Section */}
-                        <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-10 border-b border-gray-100 pb-8 mb-8">
-                            {/* Avatar Column */}
-                            <div className="flex-shrink-0 relative cursor-pointer group" onClick={() => myProfile.stories?.length > 0 && setViewingStory(true)}>
-                                <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full p-[4px] box-content ${myProfile.stories?.length > 0 ? 'bg-gradient-to-tr from-yellow-400 to-fuchsia-600 animate-spin-slow' : 'border-4 border-white shadow-lg'}`}>
-                                    <div className="w-full h-full rounded-full overflow-hidden border-4 border-white bg-white relative">
-                                        {/* Progress Overlay */}
-                                        {uploadProgress > 0 && (
-                                            <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center">
-                                                <div className="text-white text-xs font-bold">{Math.round(uploadProgress)}%</div>
-                                                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
-                                                    <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="10" />
-                                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#4F46E5" strokeWidth="10" strokeDasharray="283" strokeDashoffset={283 - (283 * uploadProgress) / 100} className="transition-all duration-300" />
+                            <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-gray-200">
+                                {/* Profile Header Section */}
+                                <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-10 border-b border-gray-100 pb-8 mb-8">
+                                    {/* Avatar Column */}
+                                    <div className="flex-shrink-0 relative cursor-pointer group" onClick={() => myProfile.stories?.length > 0 && setViewingStory(true)}>
+                                        <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full p-[4px] box-content ${myProfile.stories?.length > 0 ? 'bg-gradient-to-tr from-yellow-400 to-fuchsia-600 animate-spin-slow' : 'border-4 border-white shadow-lg'}`}>
+                                            <div className="w-full h-full rounded-full overflow-hidden border-4 border-white bg-white relative">
+                                                {/* Progress Overlay */}
+                                                {uploadProgress > 0 && (
+                                                    <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center">
+                                                        <div className="text-white text-xs font-bold">{Math.round(uploadProgress)}%</div>
+                                                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="10" />
+                                                            <circle cx="50" cy="50" r="45" fill="none" stroke="#4F46E5" strokeWidth="10" strokeDasharray="283" strokeDashoffset={283 - (283 * uploadProgress) / 100} className="transition-all duration-300" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                                {myProfile.photoUrl ? (
+                                                    <img src={myProfile.photoUrl} alt="Me" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-300">
+                                                        <User size={48} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Upload Button */}
+                                        <label className="absolute bottom-1 right-1 bg-indigo-600 text-white p-2.5 rounded-full shadow-lg cursor-pointer hover:bg-indigo-700 transition-all hover:scale-110 z-10"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <div className="relative">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                    <line x1="5" y1="12" x2="19" y2="12"></line>
                                                 </svg>
                                             </div>
-                                        )}
-                                        {myProfile.photoUrl ? (
-                                            <img src={myProfile.photoUrl} alt="Me" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-300">
-                                                <User size={48} />
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*,video/*"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (!myProfile.is_premium) {
+                                                        e.preventDefault();
+                                                        setShowPremiumModal(true);
+                                                    }
+                                                }}
+                                                onChange={async (e) => {
+                                                    if (!myProfile.is_premium) {
+                                                        setShowPremiumModal(true);
+                                                        e.target.value = '';
+                                                        return;
+                                                    }
+                                                    await handleStoryUpload(e);
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
+                                    {/* Details Column */}
+                                    <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left space-y-3 w-full">
+                                        <div className="space-y-1">
+                                            <h3 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+                                                {myProfile.name || "Add Name"}
+                                                {myProfile.is_premium && (
+                                                    <span className="bg-gradient-to-r from-amber-300 to-yellow-500 text-black text-[12px] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm border border-yellow-400 font-extrabold flex items-center gap-1 align-middle">
+                                                        Premium 👑
+                                                    </span>
+                                                )}
+                                            </h3>
+                                            <p className="text-lg text-gray-500 font-medium">
+                                                {myProfile.location?.city || (typeof myProfile.location === 'string' ? myProfile.location : "Add Location")}
+                                            </p>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                                            <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                {myProfile.career?.profession || "Add Profession"}
                                             </div>
-                                        )}
+                                            {myProfile.age && (
+                                                <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                                                    {myProfile.age} Years Old
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="pt-2 w-full md:w-auto">
+                                            <Button variant="outline" onClick={() => setSelectedProfile(myProfile)} className="w-full md:w-auto border-gray-300 hover:bg-gray-50">
+                                                Preview Public View
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Upload Button */}
-                                <label className="absolute bottom-1 right-1 bg-indigo-600 text-white p-2.5 rounded-full shadow-lg cursor-pointer hover:bg-indigo-700 transition-all hover:scale-110 z-10"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <div className="relative">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                                        </svg>
+                                {/* Rest of the profile content (Stats, Gallery, Reels, Details) remains similar but wrapped properly */}
+                                <div className="space-y-8">
+                                    {/* Connection Stats */}
+                                    <div className="flex items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100/50">
+                                        <div className="flex items-center gap-4">
+                                            <div className="bg-white p-3 rounded-full shadow-sm text-indigo-600">
+                                                <Users size={24} />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-gray-900 text-lg">{connections.length} Connections</h4>
+                                                <p className="text-sm text-gray-600">People you have matched with</p>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => setShowConnectionsModal(true)}
+                                            className="bg-white shadow-sm hover:bg-gray-50 text-indigo-700 font-semibold"
+                                        >
+                                            Manage
+                                        </Button>
                                     </div>
-                                    <input
-                                        type="file"
-                                        className="hidden"
-                                        accept="image/*,video/*"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (!myProfile.is_premium) {
-                                                e.preventDefault();
-                                                setShowPremiumModal(true);
-                                            }
-                                        }}
-                                        onChange={async (e) => {
-                                            if (!myProfile.is_premium) {
-                                                setShowPremiumModal(true);
-                                                e.target.value = '';
-                                                return;
-                                            }
-                                            await handleStoryUpload(e);
-                                        }}
-                                    />
-                                </label>
-                            </div>
 
-                            {/* Details Column */}
-                            <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left space-y-3 w-full">
-                                <div className="space-y-1">
-                                    <h3 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
-                                        {myProfile.name || "Add Name"}
-                                        {myProfile.is_premium && (
-                                            <span className="bg-gradient-to-r from-amber-300 to-yellow-500 text-black text-[12px] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm border border-yellow-400 font-extrabold flex items-center gap-1 align-middle">
-                                                Premium 👑
-                                            </span>
-                                        )}
-                                    </h3>
-                                    <p className="text-lg text-gray-500 font-medium">
-                                        {myProfile.location?.city || (typeof myProfile.location === 'string' ? myProfile.location : "Add Location")}
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                                    <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                        {myProfile.career?.profession || "Add Profession"}
-                                    </div>
-                                    {myProfile.age && (
-                                        <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-100">
-                                            {myProfile.age} Years Old
+                                    {/* Photos & Reels Sections (Preserving Logic) */}
+                                    {myProfile.photos?.length > 0 && (
+                                        <div>
+                                            <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-lg"><Sparkles size={18} className="text-indigo-500" /> My Photos</h4>
+                                            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+                                                {myProfile.photos.map((photo: string, idx: number) => (
+                                                    <img
+                                                        key={idx}
+                                                        src={photo}
+                                                        alt={`Gallery ${idx}`}
+                                                        className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                                                        onClick={() => setViewingPhoto(photo)}
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
-                                </div>
 
-                                <div className="pt-2 w-full md:w-auto">
-                                    <Button variant="outline" onClick={() => setSelectedProfile(myProfile)} className="w-full md:w-auto border-gray-300 hover:bg-gray-50">
-                                        Preview Public View
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
+                                    {myProfile.reels?.length > 0 && (
+                                        <div>
+                                            <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-lg"><Video size={18} className="text-pink-500" /> My Vibe Reels</h4>
+                                            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+                                                {myProfile.reels.map((url: string, idx: number) => (
+                                                    <div key={idx} className="relative group flex-shrink-0 cursor-pointer" onClick={() => setViewingReel(url)}>
+                                                        <video
+                                                            src={url.startsWith('http') ? url : `http://localhost:4000${url}`}
+                                                            className="w-28 h-48 md:w-36 md:h-60 object-cover rounded-xl border-2 border-indigo-100 shadow-md bg-black hover:opacity-90 transition-opacity"
+                                                            muted
+                                                            onMouseOver={e => e.currentTarget.play()}
+                                                            onMouseOut={e => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+                                                        />
+                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-xl">
+                                                            <div className="bg-white/20 backdrop-blur-md p-2 rounded-full">
+                                                                <Video size={20} className="text-white" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
-                        {/* Rest of the profile content (Stats, Gallery, Reels, Details) remains similar but wrapped properly */}
-                        <div className="space-y-8">
-                            {/* Connection Stats */}
-                            <div className="flex items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100/50">
-                                <div className="flex items-center gap-4">
-                                    <div className="bg-white p-3 rounded-full shadow-sm text-indigo-600">
-                                        <Users size={24} />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-gray-900 text-lg">{connections.length} Connections</h4>
-                                        <p className="text-sm text-gray-600">People you have matched with</p>
-                                    </div>
-                                </div>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => setShowConnectionsModal(true)}
-                                    className="bg-white shadow-sm hover:bg-gray-50 text-indigo-700 font-semibold"
-                                >
-                                    Manage
-                                </Button>
-                            </div>
-
-                            {/* Photos & Reels Sections (Preserving Logic) */}
-                            {myProfile.photos?.length > 0 && (
-                                <div>
-                                    <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-lg"><Sparkles size={18} className="text-indigo-500" /> My Photos</h4>
-                                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-                                        {myProfile.photos.map((photo: string, idx: number) => (
-                                            <img
-                                                key={idx}
-                                                src={photo}
-                                                alt={`Gallery ${idx}`}
-                                                className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:scale-105 transition-transform"
-                                                onClick={() => setViewingPhoto(photo)}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {myProfile.reels?.length > 0 && (
-                                <div>
-                                    <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-lg"><Video size={18} className="text-pink-500" /> My Vibe Reels</h4>
-                                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-                                        {myProfile.reels.map((url: string, idx: number) => (
-                                            <div key={idx} className="relative group flex-shrink-0 cursor-pointer" onClick={() => setViewingReel(url)}>
-                                                <video
-                                                    src={url.startsWith('http') ? url : `http://localhost:4000${url}`}
-                                                    className="w-28 h-48 md:w-36 md:h-60 object-cover rounded-xl border-2 border-indigo-100 shadow-md bg-black hover:opacity-90 transition-opacity"
-                                                    muted
-                                                    onMouseOver={e => e.currentTarget.play()}
-                                                    onMouseOut={e => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
-                                                />
-                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-xl">
-                                                    <div className="bg-white/20 backdrop-blur-md p-2 rounded-full">
-                                                        <Video size={20} className="text-white" />
+                                    {/* Details Grid */}
+                                    <div className="grid md:grid-cols-2 gap-6 bg-gray-50/50 rounded-2xl p-6 border border-gray-100">
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-gray-900 border-b border-gray-200 pb-2">Personal Details</h4>
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Height</span>
+                                                    <span className="font-medium text-gray-900">{myProfile.height}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Religion</span>
+                                                    <span className="font-medium text-gray-900">{myProfile.religion?.faith || '-'}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Marital Status</span>
+                                                    <span className="font-medium text-gray-900">{myProfile.maritalStatus || 'Never Married'}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Father's Job</span>
+                                                    <span className="font-medium text-gray-900">{myProfile.family?.fatherOccupation || '-'}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-500">Mother Tongue</span>
+                                                    <span className="font-medium text-gray-900">{myProfile.motherTongue || '-'}</span>
+                                                </div>
+                                                <div className="flex justify-between mt-6 pt-6 border-t border-gray-100">
+                                                    <div className="text-center">
+                                                        <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Joined</div>
+                                                        <div className="font-medium">{new Date(myProfile.created_at).toLocaleDateString()}</div>
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Status</div>
+                                                        <div className="font-medium text-green-600">Active</div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))}
+                                        </div>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Details Grid */}
-                            <div className="grid md:grid-cols-2 gap-6 bg-gray-50/50 rounded-2xl p-6 border border-gray-100">
-                                <div className="space-y-4">
-                                    <h4 className="font-bold text-gray-900 border-b border-gray-200 pb-2">Personal Details</h4>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-500">Height</span>
-                                            <span className="font-medium text-gray-900">{myProfile.height}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-500">Religion</span>
-                                            <span className="font-medium text-gray-900">{myProfile.religion?.faith || '-'}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-500">Marital Status</span>
-                                            <span className="font-medium text-gray-900">{myProfile.maritalStatus || 'Never Married'}</span>
+                                {isEditing && (
+                                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                                        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+                                            <ProfileEditor initialData={myProfile} onSave={handleProfileSave} onCancel={() => setIsEditing(false)} />
                                         </div>
                                     </div>
-                                </div>
-                                <div className="space-y-4">
-                                    <h4 className="font-bold text-gray-900 border-b border-gray-200 pb-2">Family & Lifestyle</h4>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-500">Father's Job</span>
-                                            <span className="font-medium text-gray-900">{myProfile.family?.fatherOccupation || '-'}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-500">Mother Tongue</span>
-                                            <span className="font-medium text-gray-900">{myProfile.motherTongue || '-'}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {isEditing && (
-                            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                                <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-                                    <ProfileEditor initialData={myProfile} onSave={handleProfileSave} onCancel={() => setIsEditing(false)} />
-                                </div>
+                                )}
                             </div>
                         )}
-                    </div>
-                )}
-            </main>
+                    </main>
 
             {/* Story Viewer */}
-            {viewingStory && myProfile?.stories?.length > 0 && (
-                <StoryModal
-                    stories={myProfile.stories}
-                    initialIndex={0}
+                {viewingStory && myProfile?.stories?.length > 0 && (
+                    <StoryModal
+                        stories={myProfile.stories}
+                        initialIndex={0}
+                        user={myProfile}
+                        currentUser={myProfile}
+                        onClose={() => setViewingStory(false)}
+                        onDelete={async (storyId: string) => {
+                            try {
+                                await api.interactions.deleteStory(storyId);
+                                setMyProfile((prev: any) => ({
+                                    ...prev,
+                                    stories: prev.stories.filter((s: any) => s.id !== storyId)
+                                }));
+                                if (myProfile.stories.length <= 1) setViewingStory(false);
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        }}
+                    />
+                )}
+
+                {/* Global Modals */}
+                {selectedProfile && (
+                    <ProfileModal
+                        profile={selectedProfile}
+                        currentUser={myProfile}
+                        onClose={() => setSelectedProfile(null)}
+                        onConnect={() => {
+                            api.interactions.sendInterest(selectedProfile.id);
+                            setSelectedProfile(null);
+                            toast.success(`Interest sent to ${selectedProfile.name}!`);
+                        }}
+                        onUpgrade={() => {
+                            setSelectedProfile(null);
+                            setShowPremiumModal(true);
+                        }}
+                    />
+                )}
+
+                <PremiumModal
+                    isOpen={showPremiumModal}
+                    onClose={() => setShowPremiumModal(false)}
                     user={myProfile}
-                    currentUser={myProfile}
-                    onClose={() => setViewingStory(false)}
-                    onDelete={async (storyId: string) => {
-                        try {
-                            await api.interactions.deleteStory(storyId);
-                            setMyProfile((prev: any) => ({
-                                ...prev,
-                                stories: prev.stories.filter((s: any) => s.id !== storyId)
-                            }));
-                            if (myProfile.stories.length <= 1) setViewingStory(false);
-                        } catch (e) {
-                            console.error(e);
-                        }
+                    onSuccess={() => {
+                        toast.success("Welcome to Premium! 👑");
+                        loadData();
                     }}
                 />
-            )}
 
-            {/* Global Modals */}
-            {selectedProfile && (
-                <ProfileModal
-                    profile={selectedProfile}
-                    currentUser={myProfile}
-                    onClose={() => setSelectedProfile(null)}
-                    onConnect={() => {
-                        api.interactions.sendInterest(selectedProfile.id);
-                        setSelectedProfile(null);
-                        toast.success(`Interest sent to ${selectedProfile.name}!`);
-                    }}
-                    onUpgrade={() => {
-                        setSelectedProfile(null);
-                        setShowPremiumModal(true);
-                    }}
-                />
-            )}
-
-            <PremiumModal
-                isOpen={showPremiumModal}
-                onClose={() => setShowPremiumModal(false)}
-                user={myProfile}
-                onSuccess={() => {
-                    toast.success("Welcome to Premium! 👑");
-                    loadData();
-                }}
-            />
-
-            {/* Full Screen Reel Player Modal */}
-            {viewingReel && (
-                <div
-                    className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-300"
-                    onClick={() => setViewingReel(null)}
-                >
-                    <div className="relative w-full max-w-[450px] h-[calc(100vh-80px)] max-h-[800px] bg-black rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="absolute top-4 right-4 z-10 flex gap-2">
-                            {/* Reel Action Buttons */}
-                            {myProfile?.reels?.includes(viewingReel) && (
-                                <button
-                                    className="bg-red-600/80 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-lg"
-                                    onClick={async (e) => {
-                                        e.stopPropagation();
-                                        if (confirm("Delete this reel?")) {
-                                            try {
-                                                await api.profile.deleteReel(viewingReel);
-                                                toast.success("Reel deleted");
-                                                setViewingReel(null);
-                                                const u = await api.profile.getMe();
-                                                setMyProfile(u);
-                                            } catch (err) {
-                                                toast.error("Failed to delete reel");
+                {/* Full Screen Reel Player Modal */}
+                {viewingReel && (
+                    <div
+                        className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-300"
+                        onClick={() => setViewingReel(null)}
+                    >
+                        <div className="relative w-full max-w-[450px] h-[calc(100vh-80px)] max-h-[800px] bg-black rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+                            <div className="absolute top-4 right-4 z-10 flex gap-2">
+                                {/* Reel Action Buttons */}
+                                {myProfile?.reels?.includes(viewingReel) && (
+                                    <button
+                                        className="bg-red-600/80 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (confirm("Delete this reel?")) {
+                                                try {
+                                                    await api.profile.deleteReel(viewingReel);
+                                                    toast.success("Reel deleted");
+                                                    setViewingReel(null);
+                                                    const u = await api.profile.getMe();
+                                                    setMyProfile(u);
+                                                } catch (err) {
+                                                    toast.error("Failed to delete reel");
+                                                }
                                             }
-                                        }
-                                    }}
+                                        }}
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
+                                )}
+                                <button
+                                    className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                                    onClick={() => setViewingReel(null)}
                                 >
-                                    <Trash2 size={20} />
+                                    <X size={24} />
                                 </button>
-                            )}
-                            <button
-                                className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                                onClick={() => setViewingReel(null)}
-                            >
-                                <X size={24} />
-                            </button>
+                            </div>
+                            <video
+                                src={viewingReel.startsWith('http') ? viewingReel : `http://localhost:4000${viewingReel}`}
+                                className="w-full h-full object-contain"
+                                controls
+                                autoPlay
+                            />
                         </div>
-                        <video
-                            src={viewingReel.startsWith('http') ? viewingReel : `http://localhost:4000${viewingReel}`}
-                            className="w-full h-full object-contain"
-                            controls
-                            autoPlay
-                        />
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Chat & Video Modals */}
-            {activeChat && !isVideoCall && (
-                <ChatWindow
-                    connectionId={activeChat.interactionId}
-                    partner={activeChat.partner}
-                    onClose={() => setActiveChat(null)}
-                    onVideoCall={() => setIsVideoCall(true)}
-                />
-            )}
+                {/* Chat & Video Modals */}
+                {activeChat && !isVideoCall && (
+                    <ChatWindow
+                        connectionId={activeChat.interactionId}
+                        partner={activeChat.partner}
+                        onClose={() => setActiveChat(null)}
+                        onVideoCall={() => setIsVideoCall(true)}
+                    />
+                )}
 
 
-            {activeChat && isVideoCall && (
-                <VideoCallModal
-                    connectionId={activeChat.interactionId}
-                    partner={activeChat.partner}
-                    onEndCall={() => setIsVideoCall(false)}
-                />
-            )}
+                {activeChat && isVideoCall && (
+                    <VideoCallModal
+                        connectionId={activeChat.interactionId}
+                        partner={activeChat.partner}
+                        onEndCall={() => setIsVideoCall(false)}
+                    />
+                )}
 
-            {/* Photo Viewer */}
-            toast.error("Failed to remove connection.");
+                {/* Photo Viewer */}
+                toast.error("Failed to remove connection.");
                     }
                 }
             }}
         />
-            )
+                )
 }
         </div >
     );

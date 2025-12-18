@@ -4,9 +4,14 @@
     "main": "src/server.ts",
     "scripts": {
         "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+        "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\"",
+        "prebuild": "npm run clean",
         "build": "tsc",
         "start": "node dist/server.js",
         "start:cluster": "pm2 start ecosystem.config.js --env production"
+    },
+    "engines": {
+        "node": ">=18.0.0"
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.87.1",

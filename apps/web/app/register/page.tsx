@@ -102,7 +102,7 @@ export default function RegisterPage() {
     return (
         <div className="h-screen flex font-sans bg-white overflow-hidden">
             {/* Left Panel: Real Matrimony Image */}
-            <div className="hidden lg:block w-5/12 relative h-full">
+            <div className="hidden md:block w-5/12 relative h-full">
                 <style jsx global>{`
                     input::-ms-reveal,
                     input::-ms-clear {

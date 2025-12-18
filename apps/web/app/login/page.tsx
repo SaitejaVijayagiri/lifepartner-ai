@@ -37,7 +37,7 @@ export default function LoginPage() {
     return (
         <div className="h-screen flex bg-white font-sans overflow-hidden">
             {/* Left: Matrimony Image */}
-            <div className="hidden lg:block w-5/12 relative h-full">
+            <div className="hidden md:block w-5/12 relative h-full">
                 <style jsx global>{`
                     input::-ms-reveal,
                     input::-ms-clear {

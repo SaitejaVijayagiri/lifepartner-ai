@@ -35,9 +35,9 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="h-screen flex bg-white font-sans overflow-hidden">
-            {/* Left: Matrimony Image */}
-            <div className="hidden md:block w-5/12 relative h-full">
+        <div className="min-h-screen flex flex-col lg:flex-row bg-white font-sans">
+            {/* Left: Matrimony Image (Banner on Mobile, Sidebar on Desktop) */}
+            <div className="w-full lg:w-5/12 h-48 lg:h-screen relative">
                 <style jsx global>{`
                     input::-ms-reveal,
                     input::-ms-clear {

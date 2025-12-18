@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
@@ -45,13 +44,10 @@ export default function LoginPage() {
                         display: none;
                     }
                 `}</style>
-                <Image
+                <img
                     src="https://images.unsplash.com/photo-1621252179027-94459d27d3ee?q=80&w=2070&auto=format&fit=crop"
                     alt="Happy Indian Couple"
-                    fill
-                    className="object-cover"
-                    priority
-                    sizes="(max-width: 1024px) 0vw, 50vw"
+                    className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-indigo-900/20 to-transparent flex items-end p-12">
                     <div className="text-white mb-10">

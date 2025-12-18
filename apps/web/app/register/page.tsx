@@ -103,8 +103,14 @@ export default function RegisterPage() {
         <div className="h-screen flex font-sans bg-white overflow-hidden">
             {/* Left Panel: Real Matrimony Image */}
             <div className="hidden lg:block w-5/12 relative h-full">
+                <style jsx global>{`
+                    input::-ms-reveal,
+                    input::-ms-clear {
+                        display: none;
+                    }
+                `}</style>
                 <img
-                    src="/assets/signup-couple.jpg"
+                    src="https://images.unsplash.com/photo-1583934555026-6f85ed3dd40f?q=80&w=1974&auto=format&fit=crop"
                     alt="Indian Couple Holding Hands"
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-[20s] hover:scale-110" // Subtle zoom effect
                 />

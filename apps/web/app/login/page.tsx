@@ -38,8 +38,14 @@ export default function LoginPage() {
         <div className="h-screen flex bg-white font-sans overflow-hidden">
             {/* Left: Matrimony Image */}
             <div className="hidden lg:block w-5/12 relative h-full">
+                <style jsx global>{`
+                    input::-ms-reveal,
+                    input::-ms-clear {
+                        display: none;
+                    }
+                `}</style>
                 <img
-                    src="/assets/login-couple.jpg"
+                    src="https://images.unsplash.com/photo-1621252179027-94459d27d3ee?q=80&w=2070&auto=format&fit=crop"
                     alt="Happy Indian Couple"
                     className="absolute inset-0 w-full h-full object-cover"
                 />

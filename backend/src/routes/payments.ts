@@ -45,7 +45,7 @@ router.post('/create-order', async (req, res) => {
         };
 
         // @ts-ignore
-        const response = await cashfree.PGCreateOrder(request, "2023-08-01");
+        const response = await cashfree.PGCreateOrder("2023-08-01", request);
         res.json(response.data);
 
     } catch (error: any) {
@@ -61,7 +61,7 @@ router.post('/verify', async (req, res) => {
 
         // Fetch Order Status from Cashfree
         // @ts-ignore
-        const response = await cashfree.PGOrderFetchPayments(orderId, "2023-08-01");
+        const response = await cashfree.PGOrderFetchPayments("2023-08-01", orderId);
         const payments = response.data;
 
         // Check for a SUCCESS payment

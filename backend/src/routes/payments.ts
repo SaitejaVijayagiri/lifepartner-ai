@@ -1,35 +1,30 @@
 import express from 'express';
-import { Cashfree } from "cashfree-pg";
 import crypto from 'crypto';
 import { pool } from '../db';
 
 const router = express.Router();
 
-// @ts-ignore
-Cashfree.XClientId = process.env.CASHFREE_APP_ID!;
-// @ts-ignore
-Cashfree.XClientSecret = process.env.CASHFREE_SECRET_KEY!;
-// @ts-ignore
-Cashfree.XEnvironment = Cashfree.Environment?.SANDBOX || "TEST";
+const APP_ID = process.env.CASHFREE_APP_ID!;
+const SECRET_KEY = process.env.CASHFREE_SECRET_KEY!;
+// Use TEST keys -> Sandbox URL
+const ENV = process.env.CASHFREE_ENV || "TEST";
+const BASE_URL = ENV === "PROD" ? "https://api.cashfree.com/pg" : "https://sandbox.cashfree.com/pg";
 
-// @ts-ignore
-const cashfree = new Cashfree({
-    xClientId: process.env.CASHFREE_APP_ID!,
-    xClientSecret: process.env.CASHFREE_SECRET_KEY!,
-    // @ts-ignore
-    xEnvironment: Cashfree.Environment?.SANDBOX || "TEST"
-});
-
+const HEADERS = {
+    'x-client-id': APP_ID,
+    'x-client-secret': SECRET_KEY,
+    'x-api-version': '2023-08-01',
+    'Content-Type': 'application/json'
+};
 
 // Create Order
 router.post('/create-order', async (req, res) => {
     try {
-        const { amount, userId, phone, name } = req.body; // Amount in INR (not paise)
+        const { amount, userId, phone, name } = req.body;
 
-        // Ensure unique order ID
         const orderId = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
-        const request = {
+        const requestData = {
             order_amount: amount,
             order_currency: "INR",
             order_id: orderId,
@@ -44,14 +39,23 @@ router.post('/create-order', async (req, res) => {
             }
         };
 
-        // @ts-ignore
-        const response = await cashfree.PGCreateOrder("2023-08-01", request);
-        res.json(response.data);
+        const response = await fetch(`${BASE_URL}/orders`, {
+            method: 'POST',
+            headers: HEADERS,
+            body: JSON.stringify(requestData)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Cashfree API Failed");
+        }
+
+        res.json(data);
 
     } catch (error: any) {
-        console.error("Cashfree Create Order Error:", error.response?.data?.message || error.message);
-        const detailedError = error.response?.data?.message || error.message || "Unknown Cashfree Error";
-        res.status(500).json({ error: detailedError, details: error.response?.data });
+        console.error("Cashfree Create Order Error:", error.message);
+        res.status(500).json({ error: error.message, details: error.response });
     }
 });
 
@@ -60,10 +64,18 @@ router.post('/verify', async (req, res) => {
     try {
         const { orderId, userId, type, coins } = req.body;
 
-        // Fetch Order Status from Cashfree
-        // @ts-ignore
-        const response = await cashfree.PGOrderFetchPayments("2023-08-01", orderId);
-        const payments = response.data;
+        const response = await fetch(`${BASE_URL}/orders/${orderId}/payments`, {
+            method: 'GET',
+            headers: HEADERS
+        });
+
+        const payments = await response.json();
+
+        if (!Array.isArray(payments)) {
+            // Check if it's an error object
+            if (payments.message) throw new Error(payments.message);
+            throw new Error("Invalid response from Cashfree");
+        }
 
         // Check for a SUCCESS payment
         const successfulPayment = payments.find((p: any) => p.payment_status === "SUCCESS");
@@ -71,7 +83,7 @@ router.post('/verify', async (req, res) => {
         if (successfulPayment) {
             const client = await pool.connect();
             try {
-                // Ensure we haven't processed this order yet to avoid duplicates
+                // Ensure we haven't processed this order yet
                 const existing = await client.query('SELECT id FROM transactions WHERE metadata->>\'orderId\' = $1', [orderId]);
                 if (existing.rows.length > 0) {
                     return res.json({ success: true, message: "Already processed" });
@@ -93,7 +105,7 @@ router.post('/verify', async (req, res) => {
                              premium_expiry = NOW() + INTERVAL '1 year',
                              razorpay_customer_id = $1
                          WHERE id = $2`,
-                        [successfulPayment.cf_payment_id, userId] // Using cf_id as reference
+                        [successfulPayment.cf_payment_id, userId]
                     );
                 }
             } finally {

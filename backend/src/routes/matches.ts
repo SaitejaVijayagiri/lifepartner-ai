@@ -2,8 +2,10 @@
 import express from 'express';
 import { pool } from '../db';
 import { getUserId } from './profile'; // We might need to export this or copy it
+import { AstrologyService } from '../services/astrology';
 
 const router = express.Router();
+const astrologyService = new AstrologyService();
 
 // Middleware duplications because I'm lazy to make a shared middleware file right now
 const getUser = (req: express.Request) => {
@@ -126,10 +128,13 @@ router.get('/recommendations', async (req, res) => {
                 stories: c.stories || [], // Stories
                 total_likes: c.total_likes || 0,
                 is_liked: c.is_liked || false,
-                // Premium Data (Conditionally revealed)
+                // Premium Data
                 phone: me.is_premium ? (c.phone || meta.phone) : null,
                 email: me.is_premium ? (c.email || meta.email) : null,
-                voiceBioUrl: c.voice_bio_url || null
+                voiceBioUrl: c.voice_bio_url || null,
+
+                // Astrology
+                kundli: astrologyService.calculateCompatibility(meMeta.horoscope?.nakshatra, meta.horoscope?.nakshatra)
             };
         })
             .sort((a, b) => b.score - a.score)
@@ -165,11 +170,13 @@ router.post('/search', async (req, res) => {
         const me = meRes.rows[0];
         const myGender = (me?.gender || "").toLowerCase();
         const isPremium = me?.is_premium;
+        // Ensure me metadata is available for astrology
+        if (!me.metadata) me.metadata = {};
 
         // 3. Build Dynamic Query
         let sql = `
             SELECT 
-                u.id, u.email, u.phone, u.full_name, u.gender, u.age, u.location_name, u.avatar_url, u.voice_bio_url,
+                u.id, u.email, u.phone, u.full_name, u.gender, u.age, u.location_name, u.avatar_url, u.voice_bio_url, u.is_premium,
                 p.metadata, p.raw_prompt
             FROM public.users u 
             LEFT JOIN public.profiles p ON u.id = p.user_id 
@@ -334,7 +341,8 @@ Params: ${params}
                 stories: c.stories || [],
                 phone: isPremium ? (c.phone || meta.phone) : null,
                 email: isPremium ? (c.email || meta.email) : null,
-                voiceBioUrl: c.voice_bio_url || null
+                voiceBioUrl: c.voice_bio_url || null,
+                kundli: astrologyService.calculateCompatibility(me.metadata?.horoscope?.nakshatra, meta.horoscope?.nakshatra)
             };
         });
 

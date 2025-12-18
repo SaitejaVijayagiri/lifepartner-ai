@@ -3,19 +3,23 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import KundliModal from './KundliModal';
 
 interface MatchCardProps {
     match: any;
     onConnect?: () => void;
     onViewProfile?: () => void;
     onStoryClick?: () => void;
+    currentUserName?: string; // For Kundli
 }
+
 
 export default function MatchCard({ match, onConnect, onViewProfile, onStoryClick }: MatchCardProps) {
     // Independent States
     const [matchStatus, setMatchStatus] = useState<string | null>(match.match_status || null);
     const [isLiked, setIsLiked] = useState<boolean>(match.is_liked || false);
     const [isPlaying, setIsPlaying] = useState(false); // Audio State
+    const [showKundli, setShowKundli] = useState(false); // Modal State
 
     // Counts
     const [likeCount, setLikeCount] = useState(match.total_likes || 0);
@@ -186,6 +190,19 @@ export default function MatchCard({ match, onConnect, onViewProfile, onStoryClic
 
             {/* Bottom Info Section - Simple Original Specs */}
             <div className="absolute bottom-0 inset-x-0 p-5 z-20 flex flex-col justify-end h-full pointer-events-none">
+                {/* Kundli Badge (Floating above name) */}
+                {match.kundli && (
+                    <div className="pointer-events-auto self-start mb-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setShowKundli(true); }}
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md border shadow-lg transition-transform hover:scale-105 active:scale-95 ${match.kundli.score >= 18 ? 'bg-orange-500/80 border-orange-300/50 text-white' : 'bg-red-500/80 border-red-300/50 text-white'}`}
+                        >
+                            <span className="text-xs">🕉️</span>
+                            <span className="text-xs font-bold">{match.kundli.score}/36 Guna</span>
+                        </button>
+                    </div>
+                )}
+
                 <div className="transform transition-transform duration-300 group-hover:-translate-y-16">
                     <div className="flex items-end gap-2 mb-1">
                         <h3 className="text-2xl font-bold text-white tracking-tight drop-shadow-lg filter">{match.name}, {match.age}</h3>
@@ -240,6 +257,13 @@ export default function MatchCard({ match, onConnect, onViewProfile, onStoryClic
                     <span className="text-[10px] font-bold text-white mt-0.5">{likeCount}</span>
                 </button>
             </div>
-        </div>
+
+            <KundliModal
+                isOpen={showKundli}
+                onClose={() => setShowKundli(false)}
+                data={match.kundli}
+                names={{ me: "You", partner: match.name }}
+            />
+        </div >
     );
 }

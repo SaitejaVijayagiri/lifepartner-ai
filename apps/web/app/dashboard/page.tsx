@@ -18,7 +18,7 @@ import { Toaster, useToast } from '@/components/ui/Toast';
 import { PremiumModal } from '@/components/PremiumModal';
 import { NotificationBell } from '@/components/NotificationBell';
 import { Heart, MessageCircle, User, Video, Users, LogOut, Sparkles, Trash2, Crown, X } from 'lucide-react';
-import StoryModal from '@/components/StoryModal';
+
 
 export default function DashboardPage() {
     const [activeTab, setActiveTab] = useState<'matches' | 'requests' | 'connections' | 'profile' | 'reels'>('matches');
@@ -879,8 +879,7 @@ export default function DashboardPage() {
                     <img src={viewingPhoto} alt="Full View" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
                 </div>
             )}
-            )
-}
+
         </div >
     );
 }

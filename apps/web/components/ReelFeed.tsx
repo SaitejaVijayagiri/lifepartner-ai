@@ -5,6 +5,7 @@ import { api } from '@/lib/api';
 import { Heart, MessageCircle, Send, Share2, Volume2, VolumeX, Gift } from 'lucide-react';
 import axios from 'axios';
 import AdCard, { AdItem } from './AdCard';
+import GoogleAdCard from './GoogleAdCard';
 import GiftModal from './GiftModal';
 
 // API Configuration
@@ -61,16 +62,16 @@ export default function ReelFeed() { // Removed 'users' prop as we fetch feed di
                 // Inject Ad every 5 reels
                 if (index > 0 && index % 5 === 0) {
                     mixedFeed.push({
-                        id: `ad-${index}`,
-                        type: 'ad',
-                        title: "Plan Your Dream Wedding",
-                        description: "Exclusive 20% off on premium venues for LifePartner AI couples.",
-                        advertiserName: "Royal Weddings",
-                        advertiserAvatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100",
-                        contentUrl: "https://videos.pexels.com/video-files/3191929/3191929-sd_640_360_25fps.mp4", // Stock wedding video
-                        ctaLink: "https://google.com",
-                        ctaText: "Book Now"
-                    });
+                        id: `ad-google-${index}`,
+                        type: 'google_ad', // New type
+                        title: "Sponsored",
+                        description: "",
+                        advertiserName: "Google",
+                        advertiserAvatar: "",
+                        contentUrl: "",
+                        ctaLink: "",
+                        ctaText: ""
+                    } as any); // Cast as any or extend Type if strict
                 }
             });
 
@@ -233,6 +234,11 @@ export default function ReelFeed() { // Removed 'users' prop as we fetch feed di
                 onScroll={handleScroll}
             >
                 {reels.map((item, idx) => {
+                    // Logic for Google Ads
+                    if ('type' in item && (item as any).type === 'google_ad') {
+                        return <GoogleAdCard key={item.id} isActive={idx === activeIndex} />;
+                    }
+
                     if ('type' in item && item.type === 'ad') {
                         return <AdCard key={item.id} ad={item} isActive={idx === activeIndex} />;
                     }

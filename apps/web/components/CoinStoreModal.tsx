@@ -2,21 +2,15 @@
 
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { X, Coins, CreditCard } from 'lucide-react';
+import { X, Coins } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
-import Script from 'next/script';
+import { load } from '@cashfreepayments/cashfree-js';
 
 const COIN_BUNDLES = [
     { id: 'starter', coins: 100, price: 99, label: 'Starter', popular: false },
     { id: 'popular', coins: 500, price: 399, label: 'Popular', popular: true },
     { id: 'pro', coins: 1000, price: 699, label: 'Pro', popular: false },
 ];
-
-declare global {
-    interface Window {
-        Razorpay: any;
-    }
-}
 
 export default function CoinStoreModal({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClose: () => void, onSuccess: () => void }) {
     const [loading, setLoading] = useState(false);
@@ -28,54 +22,40 @@ export default function CoinStoreModal({ isOpen, onClose, onSuccess }: { isOpen:
         setLoading(true);
         try {
             // 1. Create Order
-            const orderRes = await api.payments.createOrder(bundle.price * 100); // Amount in paise
+            const orderRes = await api.payments.createOrder(
+                bundle.price, // Amount in INR
+                // We should pass userId if possible, but backend handles it via token or body fallback
+            );
 
-            // 2. Open Razorpay
-            const options = {
-                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
-                amount: orderRes.amount,
-                currency: "INR",
-                name: "LifePartner AI",
-                description: `${bundle.coins} Coins`,
-                order_id: orderRes.id,
-                handler: async function (response: any) {
-                    try {
-                        await api.payments.verifyPayment({
-                            ...response,
-                            type: 'COINS',
-                            coins: bundle.coins,
-                            userId: localStorage.getItem('userId') // Ensure userId is sent
-                        });
-                        toast.success(`Successfully purchased ${bundle.coins} coins!`);
-                        onSuccess();
-                        onClose();
-                    } catch (e) {
-                        toast.error("Payment verification failed");
-                    }
-                },
-                prefill: {
-                    name: "User",
-                    email: "user@example.com",
-                    contact: "9999999999"
-                },
-                theme: { color: "#4F46E5" }
-            };
+            if (!orderRes.payment_session_id) {
+                throw new Error("Failed to create payment session");
+            }
 
-            const rzp = new window.Razorpay(options);
-            rzp.open();
+            // 2. Load Cashfree
+            const cashfree = await load({
+                mode: "sandbox" // TEST Mode
+            });
 
-        } catch (e) {
+            // 3. Checkout
+            await cashfree.checkout({
+                paymentSessionId: orderRes.payment_session_id,
+                returnUrl: `https://lifepartner-ai.vercel.app/dashboard`, // Handle redirect
+                redirectTarget: "_self" // Or _blank, _modal if supported
+            });
+
+            // Note: Cashfree usually redirects, so code below might not run immediately if redirecting.
+            // If using popup (legacy/headless), we might need different handling.
+            // Standard Cashfree v3 redirects.
+
+        } catch (e: any) {
             console.error(e);
-            toast.error("Failed to initiate payment");
-        } finally {
+            toast.error("Failed to initiate payment: " + (e.message || "Unknown error"));
             setLoading(false);
         }
     };
 
     return (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-            <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-
             <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
                 <div className="p-4 bg-gradient-to-r from-yellow-500 to-amber-600 text-white flex justify-between items-center">
                     <h3 className="font-bold text-lg flex items-center gap-2">
@@ -116,7 +96,7 @@ export default function CoinStoreModal({ isOpen, onClose, onSuccess }: { isOpen:
                 </div>
 
                 <div className="p-4 bg-gray-50 text-center text-xs text-gray-500">
-                    Secure payments via Razorpay. Money goes to your dashboard.
+                    Secure payments via Cashfree.
                 </div>
             </div>
         </div>

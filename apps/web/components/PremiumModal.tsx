@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, Smartphone, MessageCircle, Star } from 'lucide-react';
+import { load } from '@cashfreepayments/cashfree-js';
 
 interface PremiumModalProps {
     isOpen: boolean;
@@ -44,86 +45,30 @@ export const PremiumModal = ({ isOpen, onClose, user, onSuccess }: PremiumModalP
         );
     }
 
+
+
+    // ... imports
+
     const handlePayment = async () => {
         setLoading(true);
         try {
             console.log("Starting Payment Flow...");
-            // 1. Create Order (Amount in Paise: 499 * 100)
-            const order = await api.payments.createOrder(49900); // ₹499
-            console.log("Order Created:", order);
+            // 1. Create Order (Amount in INR: 499)
+            const orderRes = await api.payments.createOrder(499); // ₹499
 
-            // 2. Handler for Success
-            const handleSuccess = async (response: any) => {
-                console.log("Verifying Payment...", response);
-                try {
-                    await api.payments.verifyPayment({
-                        razorpay_order_id: response.razorpay_order_id,
-                        razorpay_payment_id: response.razorpay_payment_id,
-                        razorpay_signature: response.razorpay_signature,
-                        userId: user.id || user.userId // Handle potential ID field mismatch
-                    });
-                    console.log("Payment Verified!");
-                    onSuccess();
-                    setShowSuccess(true);
-                } catch (verifyErr) {
-                    console.error("Verification Failed:", verifyErr);
-                    alert("Payment Verification Failed. Please contact support.");
-                    setLoading(false);
-                }
-            };
-
-            // 3. Check for Mock Mode
-            if (order.notes?.mock) {
-                console.log("⚠️ Mock Mode: Simulating Payment...");
-                // Use Promise-based delay instead of setTimeout to keep error handling in scope
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
-                await handleSuccess({
-                    razorpay_order_id: order.id,
-                    razorpay_payment_id: `pay_mock_${Date.now()}`,
-                    razorpay_signature: 'mock_signature'
-                });
-                return;
+            if (!orderRes.payment_session_id) {
+                throw new Error("Failed to create session");
             }
 
-            // 4. Real Razorpay Flow
-            if (typeof (window as any).Razorpay === 'undefined') {
-                alert("Payment Gateway failed to load. Please refresh the page.");
-                setLoading(false);
-                return;
-            }
+            // 2. Load Cashfree
+            const cashfree = await load({ mode: "sandbox" });
 
-            const options = {
-                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
-                amount: order.amount,
-                currency: order.currency,
-                name: "LifePartner AI",
-                description: "Premium Membership",
-                order_id: order.id,
-                handler: handleSuccess,
-                modal: {
-                    ondismiss: function () {
-                        setLoading(false);
-                        console.log("Payment Popup Closed");
-                    }
-                },
-                prefill: {
-                    name: user.name,
-                    email: user.email,
-                    contact: user.phone || '9999999999',
-                },
-                theme: {
-                    color: "#4f46e5",
-                },
-            };
-
-            const rzp1 = new (window as any).Razorpay(options);
-            rzp1.on('payment.failed', function (response: any) {
-                console.error("Razorpay Failed:", response.error);
-                alert(`Payment Failed: ${response.error.description}`);
-                setLoading(false);
+            // 3. Checkout
+            await cashfree.checkout({
+                paymentSessionId: orderRes.payment_session_id,
+                returnUrl: `https://lifepartner-ai.vercel.app/dashboard`,
+                redirectTarget: "_self"
             });
-            rzp1.open();
 
         } catch (err: any) {
             console.error("Payment Init failed", err);
@@ -169,7 +114,7 @@ export const PremiumModal = ({ isOpen, onClose, user, onSuccess }: PremiumModalP
                                 "Get Premium Now"
                             )}
                         </Button>
-                        <p className="mt-4 text-xs text-gray-400">Secure payment via Razorpay</p>
+                        <p className="mt-4 text-xs text-gray-400">Secure payment via Cashfree</p>
                     </div>
 
                     {/* Close X */}

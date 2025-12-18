@@ -100,9 +100,9 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col lg:flex-row font-sans bg-white">
+        <div className="h-screen flex flex-col lg:flex-row font-sans bg-white overflow-hidden">
             {/* Left Panel: Real Matrimony Image */}
-            <div className="w-full lg:w-5/12 h-48 lg:h-screen relative">
+            <div className="w-full lg:w-5/12 h-1/3 lg:h-full relative">
                 <style jsx global>{`
                     input::-ms-reveal,
                     input::-ms-clear {
@@ -115,17 +115,17 @@ export default function RegisterPage() {
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-[20s] hover:scale-110" // Subtle zoom effect
                 />
                 {/* Gradient Overlay for Text Readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-indigo-900/40 to-transparent flex flex-col justify-end p-12 text-white">
-                    <div className="mb-8">
-                        <h1 className="text-4xl font-extrabold tracking-tight mb-4">LifePartner AI</h1>
-                        <p className="text-xl text-indigo-100 font-light mb-8 opacity-90">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-indigo-900/40 to-transparent flex flex-col justify-end p-8 lg:p-12 text-white">
+                    <div className="mb-4 lg:mb-8">
+                        <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight mb-4">LifePartner AI</h1>
+                        <p className="text-lg lg:text-xl text-indigo-100 font-light mb-6 lg:mb-8 opacity-90">
                             "Where tradition meets technology. Find your perfect match today."
                         </p>
 
                         {/* Testimonial Quote */}
                         <div className="border-l-4 border-indigo-500 pl-4 py-2">
-                            <p className="text-lg italic font-medium mb-2 opacity-95">"{TESTIMONIALS[activeTestimonial].quote}"</p>
-                            <p className="text-sm font-bold uppercase tracking-wider text-indigo-300">{TESTIMONIALS[activeTestimonial].author}</p>
+                            <p className="text-base lg:text-lg italic font-medium mb-2 opacity-95">"{TESTIMONIALS[activeTestimonial].quote}"</p>
+                            <p className="text-xs lg:text-sm font-bold uppercase tracking-wider text-indigo-300">{TESTIMONIALS[activeTestimonial].author}</p>
                         </div>
                     </div>
 

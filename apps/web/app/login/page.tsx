@@ -35,9 +35,9 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col lg:flex-row bg-white font-sans">
+        <div className="h-screen flex flex-col lg:flex-row bg-white font-sans overflow-hidden">
             {/* Left: Matrimony Image (Banner on Mobile, Sidebar on Desktop) */}
-            <div className="w-full lg:w-5/12 h-48 lg:h-screen relative">
+            <div className="w-full lg:w-5/12 h-1/3 lg:h-full relative">
                 <style jsx global>{`
                     input::-ms-reveal,
                     input::-ms-clear {
@@ -49,11 +49,11 @@ export default function LoginPage() {
                     alt="Happy Indian Couple"
                     className="absolute inset-0 w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-indigo-900/20 to-transparent flex items-end p-12">
-                    <div className="text-white mb-10">
-                        <h2 className="text-4xl font-extrabold mb-4 leading-tight">Welcome Back to <br />Your Journey</h2>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-indigo-900/20 to-transparent flex items-end p-8 lg:p-12">
+                    <div className="text-white mb-6 lg:mb-10">
+                        <h2 className="text-3xl lg:text-4xl font-extrabold mb-4 leading-tight">Welcome Back to <br />Your Journey</h2>
                         <div className="w-16 h-1 bg-indigo-500 mb-6"></div>
-                        <p className="text-xl opacity-90 font-light">
+                        <p className="text-lg lg:text-xl opacity-90 font-light">
                             "Marriage is a mosaic you build with your spouse. Millions of tiny moments that create your love story."
                         </p>
                     </div>

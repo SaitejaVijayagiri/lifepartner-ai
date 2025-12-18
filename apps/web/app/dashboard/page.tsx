@@ -554,10 +554,10 @@ export default function DashboardPage() {
                                     {/* Details Column */}
                                     <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left space-y-3 w-full">
                                         <div className="space-y-1">
-                                            <h3 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+                                            <h3 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight flex flex-col md:flex-row items-center gap-2 md:gap-3">
                                                 {myProfile.name || "Add Name"}
                                                 {myProfile.is_premium && (
-                                                    <span className="bg-gradient-to-r from-amber-300 to-yellow-500 text-black text-[12px] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm border border-yellow-400 font-extrabold flex items-center gap-1 align-middle">
+                                                    <span className="bg-gradient-to-r from-amber-300 to-yellow-500 text-black text-[12px] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm border border-yellow-400 font-extrabold flex items-center gap-1">
                                                         Premium 👑
                                                     </span>
                                                 )}

@@ -195,8 +195,17 @@ export default function VideoCallModal({ connectionId, partner, onEndCall, incom
 
                 {/* Bottom Controls */}
                 <div className="h-24 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-center gap-6 z-20">
+                    {/* Gift Button */}
+                    <button
+                        className="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-yellow-400 shadow-lg transition-all"
+                        onClick={() => setShowGiftModal(true)}
+                        title="Send Gift"
+                    >
+                        <Gift size={24} />
+                    </button>
+
                     <button className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center text-white text-2xl shadow-lg transform hover:scale-105 transition-all" onClick={leaveCall}>
-                        📞
+                        <PhoneOff size={28} />
                     </button>
                 </div>
             </div>
@@ -210,6 +219,13 @@ export default function VideoCallModal({ connectionId, partner, onEndCall, incom
                     isCallMode={true}
                 />
             </div>
-        </div>
+
+            <GiftModal
+                isOpen={showGiftModal}
+                onClose={() => setShowGiftModal(false)}
+                toUserId={partner.id}
+                toUserName={partner.name}
+            />
+        </div >
     );
 }

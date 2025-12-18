@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
@@ -109,10 +110,13 @@ export default function RegisterPage() {
                         display: none;
                     }
                 `}</style>
-                <img
+                <Image
                     src="https://images.unsplash.com/photo-1583934555026-6f85ed3dd40f?q=80&w=1974&auto=format&fit=crop"
                     alt="Indian Couple Holding Hands"
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-[20s] hover:scale-110" // Subtle zoom effect
+                    fill
+                    className="object-cover transition-transform duration-[20s] hover:scale-110" // Subtle zoom effect
+                    priority
+                    sizes="(max-width: 1024px) 0vw, 50vw"
                 />
                 {/* Gradient Overlay for Text Readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-indigo-900/40 to-transparent flex flex-col justify-end p-12 text-white">

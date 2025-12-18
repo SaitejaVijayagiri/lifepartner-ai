@@ -107,28 +107,34 @@ export const NotificationBell = () => {
                             </div>
                         ) : (
                             <div className="divide-y divide-gray-50">
-                                {notifications.map((n, i) => (
-                                    <div
-                                        key={n.id || i}
-                                        className={`p-4 hover:bg-gray-50 transition-colors flex gap-3 ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
-                                        onClick={() => n.id && !n.is_read && markRead(n.id)}
-                                    >
-                                        <div className={`
-                                            mt-1 w-2 h-2 rounded-full flex-shrink-0
-                                            ${!n.is_read ? 'bg-indigo-500' : 'bg-transparent'}
-                                        `} />
-                                        <div className="flex-1">
-                                            <p className="text-sm text-gray-800 leading-relaxed">
-                                                {n.message}
-                                            </p>
-                                            <p className="text-xs text-gray-400 mt-1">
-                                                {new Date(n.created_at || n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                {' · '}
-                                                {new Date(n.created_at || n.timestamp).toLocaleDateString()}
-                                            </p>
+                                {notifications.map((n, i) => {
+                                    const dateStr = n.created_at || n.timestamp;
+                                    const dateObj = dateStr ? new Date(dateStr) : new Date();
+                                    const isValidDate = !isNaN(dateObj.getTime());
+
+                                    return (
+                                        <div
+                                            key={n.id || i}
+                                            className={`p-4 hover:bg-gray-50 transition-colors flex gap-3 ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
+                                            onClick={() => n.id && !n.is_read && markRead(n.id)}
+                                        >
+                                            <div className={`
+                                                mt-1 w-2 h-2 rounded-full flex-shrink-0
+                                                ${!n.is_read ? 'bg-indigo-500' : 'bg-transparent'}
+                                            `} />
+                                            <div className="flex-1">
+                                                <p className="text-sm text-gray-800 leading-relaxed">
+                                                    {n.message}
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    {isValidDate ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                    {' · '}
+                                                    {isValidDate ? dateObj.toLocaleDateString() : ''}
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

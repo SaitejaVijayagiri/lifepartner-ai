@@ -17,7 +17,8 @@ import ReelFeed from '@/components/ReelFeed';
 import { Toaster, useToast } from '@/components/ui/Toast';
 import { PremiumModal } from '@/components/PremiumModal';
 import { NotificationBell } from '@/components/NotificationBell';
-import { Heart, MessageCircle, User, Video, Users, LogOut, Sparkles, Trash2, Crown, X } from 'lucide-react';
+import { Heart, MessageCircle, User, Video, Users, LogOut, Sparkles, Trash2, Crown, X, Coins } from 'lucide-react';
+import CoinStoreModal from '@/components/CoinStoreModal';
 
 
 export default function DashboardPage() {
@@ -33,6 +34,7 @@ export default function DashboardPage() {
     const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
     const [showConnectionsModal, setShowConnectionsModal] = useState(false);
     const [showPremiumModal, setShowPremiumModal] = useState(false);
+    const [showCoinStore, setShowCoinStore] = useState(false);
 
     // Chat & Video State
     const [activeChat, setActiveChat] = useState<any>(null); // The accepted interaction object
@@ -252,6 +254,15 @@ export default function DashboardPage() {
                             </div>
                         ) : null}
 
+                        {/* Coin Wallet Button */}
+                        <button
+                            onClick={() => setShowCoinStore(true)}
+                            className="hidden sm:flex items-center gap-2 bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-lg border border-yellow-200 hover:bg-yellow-100 transition-colors"
+                        >
+                            <Coins size={14} className="text-yellow-600" />
+                            <span className="text-xs font-bold">{myProfile?.coins || 0}</span>
+                        </button>
+
                         <div className="hidden sm:flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
                             <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                             <span className="text-xs font-semibold text-indigo-700">Online</span>
@@ -307,6 +318,14 @@ export default function DashboardPage() {
                             Upgrade
                         </button>
                     ) : null}
+
+                    <button
+                        onClick={() => setShowCoinStore(true)}
+                        className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap bg-yellow-50 text-yellow-700 border border-yellow-200"
+                    >
+                        <Coins size={14} />
+                        {myProfile?.coins || 0}
+                    </button>
                 </div>
             </header>
 
@@ -752,6 +771,15 @@ export default function DashboardPage() {
                 user={myProfile}
                 onSuccess={() => {
                     toast.success("Welcome to Premium! 👑");
+                    loadData();
+                }}
+            />
+
+            <CoinStoreModal
+                isOpen={showCoinStore}
+                onClose={() => setShowCoinStore(false)}
+                onSuccess={() => {
+                    toast.success("Coins Added!");
                     loadData();
                 }}
             />

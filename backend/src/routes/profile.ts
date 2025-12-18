@@ -115,6 +115,7 @@ router.get('/me', async (req, res) => {
             photoUrl: user.avatar_url,
             joinedAt: user.created_at,
             is_premium: user.is_premium || false, // Exposed to Frontend
+            coins: user.coins || 0, // Added Coin Balance
             phone: meta.phone || "", // Added Phone
             stories: (user.stories || []).filter((s: any) => new Date(s.expiresAt) > new Date()) // Only return active stories
         };

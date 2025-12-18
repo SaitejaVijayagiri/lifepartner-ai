@@ -54,7 +54,7 @@ export const PremiumModal = ({ isOpen, onClose, user, onSuccess }: PremiumModalP
         try {
             console.log("Starting Payment Flow...");
             // 1. Create Order (Amount in INR: 499)
-            const orderRes = await api.payments.createOrder(499); // ₹499
+            const orderRes = await api.payments.createOrder(499, 'PREMIUM');
 
             if (!orderRes.payment_session_id) {
                 throw new Error("Failed to create session");
@@ -66,7 +66,6 @@ export const PremiumModal = ({ isOpen, onClose, user, onSuccess }: PremiumModalP
             // 3. Checkout
             await cashfree.checkout({
                 paymentSessionId: orderRes.payment_session_id,
-                returnUrl: `https://lifepartner-ai.vercel.app/dashboard`,
                 redirectTarget: "_self"
             });
 

@@ -23,8 +23,9 @@ export default function CoinStoreModal({ isOpen, onClose, onSuccess }: { isOpen:
         try {
             // 1. Create Order
             const orderRes = await api.payments.createOrder(
-                bundle.price, // Amount in INR
-                // We should pass userId if possible, but backend handles it via token or body fallback
+                bundle.price, // Amount
+                'COINS',      // Type
+                bundle.coins  // Coins count
             );
 
             if (!orderRes.payment_session_id) {
@@ -39,8 +40,7 @@ export default function CoinStoreModal({ isOpen, onClose, onSuccess }: { isOpen:
             // 3. Checkout
             await cashfree.checkout({
                 paymentSessionId: orderRes.payment_session_id,
-                returnUrl: `https://lifepartner-ai.vercel.app/dashboard`, // Handle redirect
-                redirectTarget: "_self" // Or _blank, _modal if supported
+                redirectTarget: "_self"
             });
 
             // Note: Cashfree usually redirects, so code below might not run immediately if redirecting.

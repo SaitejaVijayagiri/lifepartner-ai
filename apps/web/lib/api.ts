@@ -104,7 +104,8 @@ export const api = {
         })
     },
     payments: {
-        createOrder: (amount: number) => fetchAPI('/payments/create-order', { method: 'POST', body: JSON.stringify({ amount }) }),
+        createOrder: (amount: number, type: 'COINS' | 'PREMIUM' = 'COINS', coins: number = 0) =>
+            fetchAPI('/payments/create-order', { method: 'POST', body: JSON.stringify({ amount, type, coins }) }),
         verifyPayment: (payload: any) => fetchAPI('/payments/verify', { method: 'POST', body: JSON.stringify(payload) })
     },
     notifications: {

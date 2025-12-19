@@ -178,15 +178,20 @@ const initServer = async () => {
                     PRIMARY KEY (user_id, token)
                 );
 
-                -- Messages
+                -- Messages (Chat Room Style)
                 CREATE TABLE IF NOT EXISTS public.messages (
                     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                    match_id UUID REFERENCES public.matches(id),
                     sender_id UUID REFERENCES public.users(id), 
-                    receiver_id UUID REFERENCES public.users(id),
                     content TEXT,
                     is_read BOOLEAN DEFAULT FALSE,
-                    timestamp TIMESTAMP DEFAULT NOW()
+                    created_at TIMESTAMP DEFAULT NOW()
                 );
+                
+                -- Check columns for Messages (Migrations)
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND table_schema='public' AND column_name='match_id') THEN 
+                    ALTER TABLE public.messages ADD COLUMN match_id UUID REFERENCES public.matches(id);
+                END IF;
 
                 -- Reports
                 CREATE TABLE IF NOT EXISTS public.reports (
@@ -271,8 +276,8 @@ const initServer = async () => {
         // 3. Create Indexes (Idempotent)
         await client.query(`
             CREATE INDEX IF NOT EXISTS idx_messages_sender ON public.messages(sender_id);
-            CREATE INDEX IF NOT EXISTS idx_messages_receiver ON public.messages(receiver_id);
-            CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON public.messages(timestamp);
+            CREATE INDEX IF NOT EXISTS idx_messages_match ON public.messages(match_id); -- Corrected Index
+            CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON public.messages(created_at);
         `);
         client.release();
         console.log("✅ Schema verified (columns verified)");

@@ -110,6 +110,12 @@ router.post('/register', async (req, res) => {
 
         // 7. Send OTP Email
         console.log(`🔐 OTP for ${identifier}: ${otp}`); // Log for dev
+        // DEV DEBUG: Write OTP to file
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            fs.appendFileSync(path.join(__dirname, '../otp.log'), `[${new Date().toISOString()}] OTP for ${identifier}: ${otp}\n`);
+        } catch (err) { console.error("Failed to write OTP log", err); }
         if (targetEmail && process.env.RESEND_API_KEY) {
             try {
                 // Professional HTML Template
@@ -257,9 +263,53 @@ router.post('/login', async (req, res) => {
 });
 
 // 4. Resend OTP Route
+// 4. Resend OTP Route
 router.post('/resend-otp', async (req, res) => {
-    // Re-generate and send
-    res.json({ message: "Not implemented yet for safety" });
+    const client = await pool.connect();
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: "Email required" });
+
+        // 1. Check User
+        const userRes = await client.query("SELECT id, full_name, is_verified FROM public.users WHERE email = $1", [email]);
+        if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" });
+        const user = userRes.rows[0];
+
+        if (user.is_verified) return res.json({ message: "User already verified" });
+
+        // 2. Generate New OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+        // 3. Update DB
+        await client.query("UPDATE public.users SET otp_code = $1, otp_expires_at = $2 WHERE id = $3", [otp, otpExpiresAt, user.id]);
+
+        // 4. Send Email
+        console.log(`🔐 RESENT OTP for ${email}: ${otp}`);
+
+        if (process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes('mock')) {
+            await resend.emails.send({
+                from: 'LifePartner AI <onboarding@resend.dev>',
+                to: email,
+                subject: 'Verify your LifePartner AI Account (Resend)',
+                html: `
+                    <h1>Verification Code</h1>
+                    <p>Hello ${user.full_name},</p>
+                    <p>Here is your new verification code:</p>
+                    <h2>${otp}</h2>
+                    <p>Expires in 10 minutes.</p>
+                `
+            });
+        }
+
+        res.json({ success: true, message: "OTP resent successfully" });
+
+    } catch (e) {
+        console.error("Resend OTP Error", e);
+        res.status(500).json({ error: "Failed to resend OTP" });
+    } finally {
+        client.release();
+    }
 });
 
 // 5. Forgot Password - Send OTP

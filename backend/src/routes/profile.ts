@@ -34,7 +34,7 @@ router.get('/me', authenticateToken, async (req: any, res) => {
 
         const client = await pool.connect();
         const result = await client.query(`
-            SELECT u.*, p.* 
+            SELECT u.id as uid, u.*, p.* 
             FROM public.users u
             LEFT JOIN public.profiles p ON u.id = p.user_id
             WHERE u.id = $1
@@ -49,7 +49,7 @@ router.get('/me', authenticateToken, async (req: any, res) => {
 
         // Transform User + Profile into the specific Frontend Shape
         const profile = {
-            userId: user.id || user.user_id,
+            userId: user.uid || user.id || user.user_id,
             name: user.full_name,
             email: user.email,
             age: user.age, // Added Age

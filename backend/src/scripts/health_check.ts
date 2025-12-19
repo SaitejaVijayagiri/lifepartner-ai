@@ -1,73 +1,77 @@
 
-// import { api } from '../routes/chat'; 
-import dotenv from 'dotenv';
-dotenv.config();
+import { pool } from '../db';
+import { checkDbConnection } from '../db';
 
-const BASE_URL = process.env.API_URL || 'http://localhost:4000';
-// Helper to measure time
-const time = async (label: string, fn: () => Promise<any>) => {
-    const start = Date.now();
-    try {
-        const res = await fn();
-        const duration = Date.now() - start;
-        console.log(`✅ ${label}: ${duration}ms [${res.status} ${res.statusText}]`);
-        return res;
-    } catch (e: any) {
-        console.error(`❌ ${label} Failed:`, e.message);
-        return null;
-    }
-}
-
-async function runHealthCheck() {
+const runHealthCheck = async () => {
     console.log("🏥 Starting System Health Check...");
 
-    // 1. Login to get Token
-    console.log("--- Authentication ---");
-    let token = '';
-    const loginRes = await fetch(`${BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'test_auth_copy@example.com', password: 'password123' })
-    });
-
-    if (loginRes.ok) {
-        const data = await loginRes.json();
-        token = data.token;
-        console.log(`✅ Login Success: ${Date.now()}ms`);
-    } else {
-        console.error("❌ Login Failed. Creating Test User...");
-        // Register if login fails
-        const regRes = await fetch(`${BASE_URL}/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: 'test_auth_copy@example.com',
-                password: 'password123',
-                name: 'Test Agent',
-                age: 25,
-                gender: 'Male'
-            })
-        });
-        if (regRes.ok) {
-            const data = await regRes.json();
-            token = data.token;
-            console.log("✅ Registration Success");
-        } else {
-            console.error("❌ Registration Failed. Aborting.");
-            return;
-        }
+    // 1. Connection Check
+    const isConnected = await checkDbConnection();
+    if (!isConnected) {
+        console.error("❌ CRITICAL: Database Connection Failed");
+        process.exit(1);
     }
 
-    const headers = { 'Authorization': `Bearer ${token}` };
+    const client = await pool.connect();
+    try {
+        // 2. Table Existence Check
+        const requiredTables = ['users', 'profiles', 'interactions', 'matches', 'transactions', 'messages'];
+        console.log(`\n🔍 Checking for required tables: ${requiredTables.join(', ')}`);
 
-    // 2. Latency Tests
-    console.log("\n--- Latency Tests (Target < 200ms) ---");
-    await time('GET /profile/me', () => fetch(`${BASE_URL}/profile/me`, { headers }));
-    await time('GET /matches', () => fetch(`${BASE_URL}/matches/recommendations`, { headers }));
-    await time('GET /requests', () => fetch(`${BASE_URL}/interactions/requests`, { headers }));
-    await time('GET /connections', () => fetch(`${BASE_URL}/interactions/connections`, { headers }));
+        const tablesRes = await client.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        `);
+        const existingTables = tablesRes.rows.map(r => r.table_name);
 
-    console.log("\n--- Done ---");
-}
+        const missingTables = requiredTables.filter(t => !existingTables.includes(t));
+        if (missingTables.length > 0) {
+            console.error(`❌ MISSING TABLES: ${missingTables.join(', ')}`);
+        } else {
+            console.log("✅ All required tables present.");
+        }
+
+        // 3. Row Count Sanity Check
+        console.log("\n📊 Row Counts:");
+        for (const table of existingTables) {
+            const countRes = await client.query(`SELECT COUNT(*) FROM public."${table}"`);
+            console.log(` - ${table}: ${countRes.rows[0].count}`);
+        }
+
+        // 4. Critical Column Check (Users)
+        console.log("\n🕵️ Checking Critical Columns (users)...");
+        const userColsRes = await client.query(`
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'users'
+        `);
+        const userCols = userColsRes.rows.map(r => r.column_name);
+        const requiredUserCols = ['id', 'email', 'password_hash', 'is_verified', 'is_premium', 'coins'];
+        const missingUserCols = requiredUserCols.filter(c => !userCols.includes(c));
+
+        if (missingUserCols.length > 0) {
+            console.error(`❌ MISSING USER COLUMNS: ${missingUserCols.join(', ')}`);
+        } else {
+            console.log("✅ Critical user columns present.");
+        }
+
+        // 5. Test Query (Simulation)
+        console.log("\n🧪 Running Test Select Query...");
+        const testRes = await client.query('SELECT id, email FROM public.users LIMIT 1');
+        if (testRes.rows.length > 0) {
+            console.log("✅ Can select from users table.");
+        } else {
+            console.log("⚠️ Users table is empty (might be expected if fresh db).");
+        }
+
+    } catch (err) {
+        console.error("❌ Health Check Failed:", err);
+    } finally {
+        client.release();
+        await pool.end();
+        console.log("\n🏁 Health Check Complete.");
+    }
+};
 
 runHealthCheck();

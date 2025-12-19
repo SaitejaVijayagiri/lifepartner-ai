@@ -11,15 +11,14 @@
 - **Voice-First Experience**:
     - [x] **Voice Bio**: Users can record/upload voice bios during registration.
     - [ ] Dynamic Daily Voice Notes (Planned).
-- **Video Bio AI**:
+## Phase 2: Enhanced Immersion
     - [x] **Reel Uploads**: Users can upload video reels to profile.
     - [x] **AI Analysis**: Backend analysis of video "Vibe" (Gemini Vision).
-- **Advanced Simulation**:
-    - [x] Multiplayer "Game Mode": AI-generated relationship scenarios to test couple compatibility.
+- [x] **Multiplayer Game Mode**: AI-generated relationship scenarios to test couple compatibility.
 
-## Phase 3: Trust & Safety (Q3 2026)
+## Phase 3: Trust & Safety
 - **ID Verification**: Integration with Government ID APIs (Aadhaar/SSN).
-- **Blockchain Reputation**: Store "Verified Bad Actor" hashes on-chain to prevent re-registration of abusers.
+- **Blockchain Reputation**: Store "Verified Bad Actor" hashes on-chain.
 - [x] **Deep Compatibility Reports**: generate 20-page PDF psychometric analysis for couples.
 
 ## Phase 4: Global Scale

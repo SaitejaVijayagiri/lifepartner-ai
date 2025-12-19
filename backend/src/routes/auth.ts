@@ -421,7 +421,7 @@ router.post('/google', async (req, res) => {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
                 code,
-                client_id: '326304538770-5tskm10njnb8e5kkh1gdp4as7sb7km9b.apps.googleusercontent.com',
+                client_id: process.env.GOOGLE_CLIENT_ID!,
                 client_secret: process.env.GOOGLE_CLIENT_SECRET!,
                 redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3005/auth/callback/google',
                 grant_type: 'authorization_code'

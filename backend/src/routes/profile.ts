@@ -1,5 +1,5 @@
 import express from 'express';
-import multer from 'multer';
+
 import { pool } from '../db'; // Centralized DB & Storage
 import { createClient } from '@supabase/supabase-js';
 
@@ -12,31 +12,8 @@ import path from 'path';
 const router = express.Router();
 const aiService = new AIService();
 
-// Multer Config (Disk Storage for Stability + Large Files)
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, '../uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
-    }
-});
-
-const upload = multer({
-    storage,
-    limits: { fileSize: 500 * 1024 * 1024 }, // 500MB Limit (High Capacity)
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('image/') || file.mimetype.startsWith('audio/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only video, image, and audio files are allowed!'));
-        }
-    }
-});
+import { upload } from '../middleware/upload';
+import { authenticateToken } from '../middleware/auth';
 
 // Debug Logger
 const logDebug = (msg: string, data?: any) => {
@@ -50,28 +27,10 @@ const logDebug = (msg: string, data?: any) => {
     }
 };
 
-// Middleware to extract UserId from JWT
-export const getUserId = (req: express.Request) => {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
-        try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(Buffer.from(base64, 'base64').toString());
-            return payload.userId;
-        } catch (e) {
-            return null;
-        }
-    }
-    return null;
-};
-
 // 2. GET /me (Fetch from DB)
-router.get('/me', async (req, res) => {
+router.get('/me', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         const client = await pool.connect();
         const result = await client.query(`
@@ -117,6 +76,7 @@ router.get('/me', async (req, res) => {
             is_premium: user.is_premium || false, // Exposed to Frontend
             coins: user.coins || 0, // Added Coin Balance
             phone: meta.phone || "", // Added Phone
+            referral_code: user.referral_code || "", // Added Referral Code
             stories: (user.stories || []).filter((s: any) => new Date(s.expiresAt) > new Date()) // Only return active stories
         };
 
@@ -128,12 +88,9 @@ router.get('/me', async (req, res) => {
 });
 
 // 2.5 PUT /me (Update Profile)
-router.put('/me', async (req, res) => {
+router.put('/me', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
-
-
+        const userId = req.user.userId;
 
         // ...
 
@@ -214,10 +171,9 @@ router.put('/me', async (req, res) => {
 });
 
 // 3. POST /prompt (Update Profile with AI)
-router.post('/prompt', async (req, res) => {
+router.post('/prompt', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         const { prompt } = req.body;
 
@@ -245,10 +201,9 @@ router.post('/prompt', async (req, res) => {
 });
 
 // 4. POST /reel (Stream from Disk to Supabase)
-router.post('/reel', upload.single('video'), async (req, res) => {
+router.post('/reel', authenticateToken, upload.single('video'), async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         if (!req.file) return res.status(400).json({ error: "No video file" });
 
@@ -308,12 +263,12 @@ router.post('/reel', upload.single('video'), async (req, res) => {
 });
 
 // 4.5 POST /voice-bio (Upload Voice Bio)
-router.post('/voice-bio', upload.single('audio'), async (req, res) => {
+router.post('/voice-bio', authenticateToken, upload.single('audio'), async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         if (!req.file) return res.status(400).json({ error: "No audio file" });
+
 
         const filePath = req.file.path;
         // Use a consistent filename so user can overwrite their bio
@@ -321,32 +276,97 @@ router.post('/voice-bio', upload.single('audio'), async (req, res) => {
 
         console.log(`Starting Voice Bio upload: ${filename}`);
 
-        // 1. Stream to Supabase
+        // 2. Transcription & Safety Check (FREE AI)
+        console.log("🛡️ Running Voice Safety Analysis...");
+        const transcript = await aiService.transcribeAudio(filePath);
+        const cleanTranscript = sanitizeContent(transcript);
+
+        // If 'Clean' differs from 'Original' (meaning it had phones/emails), REJECT.
+        // OR search for specific trigger words if needed. 
+        // Note: sanitizeContent replaces with [Hidden...], so if the string contains that, we know it was bad.
+        if (cleanTranscript.includes("[Hidden Contact")) {
+            console.warn(`🚨 BLOCKED Voice Bio: User tried to share contact info. Transcript: "${transcript}"`);
+
+            // Cleanup
+            fs.unlink(filePath, () => { });
+
+            return res.status(400).json({
+                error: "Safety Alert: Personal contact information detected in audio. Please record again without phone numbers or emails."
+            });
+        }
+
+        // 3. Stream to Supabase (if safe)
         const fileStream = fs.createReadStream(filePath);
         const { data, error } = await supabase
             .storage
-            .from('reels') // Reusing 'reels' bucket for simplicity/permissions
+            .from('uploads')
             .upload(filename, fileStream, {
                 contentType: req.file.mimetype,
-                upsert: true,
-                duplex: 'half'
+                upsert: true
             });
 
-        // 2. Cleanup
+        // Cleanup local temp file
+        // Don't clean up yet if we want to run vibe analysis on local file?
+        // Actually vibe analysis runs on file path.
+        // We can run it in parallel or after.
+        // Let's run it BEFORE cleanup.
+
+        let vibeResult = null;
+        try {
+            // 4. AI Vibe Analysis (Phase 2 Feature)
+            console.log("🧠 Analyzing Voice Vibe...");
+            const { analyzeVibe } = await import('../services/vibeAnalysis');
+            vibeResult = await analyzeVibe(filePath, 'AUDIO');
+            console.log("✨ Vibe Analysis Result:", vibeResult);
+        } catch (vibeErr) {
+            console.error("Vibe Analysis Failed (Non-blocking):", vibeErr);
+        }
+
         fs.unlink(filePath, () => { });
 
         if (error) {
-            console.error("Supabase Voice Upload Error:", error);
+            console.error("Supabase Upload Error", error);
             throw error;
         }
 
-        // 3. Get Public URL
-        const { data: { publicUrl } } = supabase.storage.from('reels').getPublicUrl(filename);
+        const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(filename);
 
-        // 4. Save to DB
-        await pool.query(`UPDATE public.users SET voice_bio_url = $1 WHERE id = $2`, [publicUrl, userId]);
+        // 5. Update Profile & Store Vibe Metadata
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
 
-        res.json({ success: true, audioUrl: publicUrl });
+            // Update URL
+            await client.query(`UPDATE public.users SET voice_bio_url = $1 WHERE id = $2`, [publicUrl, userId]);
+
+            // Update Metadata if vibe exists
+            if (vibeResult) {
+                // Merge into metadata JSON
+                await client.query(`
+                    UPDATE public.profiles 
+                    SET metadata = jsonb_set(
+                        COALESCE(metadata, '{}'::jsonb), 
+                        '{voice_vibe}', 
+                        $1::jsonb
+                    )
+                    WHERE user_id = $2
+                `, [JSON.stringify(vibeResult), userId]);
+            }
+
+            await client.query('COMMIT');
+        } catch (dbErr) {
+            await client.query('ROLLBACK');
+            throw dbErr;
+        } finally {
+            client.release();
+        }
+
+        res.json({
+            success: true,
+            audioUrl: publicUrl,
+            vibe: vibeResult, // Return to frontend!
+            transcript
+        }); // Return transcript for UI if we want to show it later
 
     } catch (e: any) {
         console.error("Voice Upload Error", e);
@@ -356,20 +376,19 @@ router.post('/voice-bio', upload.single('audio'), async (req, res) => {
 });
 
 // 5. POST /stories (Upload Story)
-router.post('/stories', (req, res, next) => {
+router.post('/stories', authenticateToken, (req, res, next) => {
     // Custom Error Handling for Multer (File Limit, etc.)
     upload.single('media')(req, res, (err) => {
         if (err) {
-            logDebug("Multer Error:", err);
+            // logDebug("Multer Error:", err);
             return res.status(400).json({ error: err.message });
         }
         next();
     });
-}, async (req, res) => {
+}, async (req: any, res) => {
     let filePath = '';
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         logDebug(`[POST /stories] User: ${userId} Requesting Upload`);
 
@@ -473,10 +492,9 @@ router.post('/stories', (req, res, next) => {
 });
 
 // 6. DELETE /stories/:storyId
-router.delete('/stories/:storyId', async (req, res) => {
+router.delete('/stories/:storyId', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         const { storyId } = req.params;
 

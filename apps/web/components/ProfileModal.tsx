@@ -317,7 +317,7 @@ export default function ProfileModal({ profile, currentUser, onClose, onConnect,
                                             className="aspect-[9/16] bg-gray-900 rounded-xl overflow-hidden relative cursor-pointer group shadow-md hover:shadow-xl transition-all"
                                             onClick={() => setPlayingReel(url)}
                                         >
-                                            <video src={url.startsWith('http') ? url : `http://localhost:4000${url}`} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" muted />
+                                            <video src={url.startsWith('http') ? url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${url}`} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" muted />
                                             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-all flex items-center justify-center">
                                                 <div className="w-12 h-12 bg-white/20 backdrop-blur-sm border border-white/40 rounded-full flex items-center justify-center text-white scale-100 group-hover:scale-110 transition-transform shadow-lg">
                                                     <Play size={24} fill="white" />
@@ -363,7 +363,7 @@ export default function ProfileModal({ profile, currentUser, onClose, onConnect,
                             </svg>
                         </button>
                         <video
-                            src={playingReel.startsWith('http') ? playingReel : `http://localhost:4000${playingReel}`}
+                            src={playingReel.startsWith('http') ? playingReel : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}${playingReel}`}
                             className="w-full h-full md:w-auto md:h-[90vh] object-contain"
                             controls
                             autoPlay

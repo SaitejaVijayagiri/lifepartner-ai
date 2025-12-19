@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/Toast';
 import VoiceRecorder from './VoiceRecorder';
 import { api } from '@/lib/api';
 
@@ -44,7 +45,9 @@ const GRADIENTS = {
 };
 
 export default function ProfileWizard({ onComplete }: { onComplete: (data: any) => void }) {
+    const toast = useToast();
     const [currentStep, setCurrentStep] = useState(0);
+    const [vibeResult, setVibeResult] = useState<any>(null); // For AI Feedback
     const [direction, setDirection] = useState('forward');
     const [data, setData] = useState<any>({
         // Basics
@@ -85,9 +88,24 @@ export default function ProfileWizard({ onComplete }: { onComplete: (data: any) 
 
     const validateStep = () => {
         const stepId = STEPS[currentStep].id;
-        if (stepId === 'basics') return data.name && data.age && data.height && data.city;
-        if (stepId === 'career') return data.profession && data.education;
-        if (stepId === 'photos') return data.photos && data.photos.length > 0;
+        if (stepId === 'basics') {
+            if (!(data.name && data.age && data.height && data.city)) {
+                toast.error("Please fill in required fields (*)");
+                return false;
+            }
+        }
+        if (stepId === 'career') {
+            if (!(data.profession && data.education)) {
+                toast.error("Please fill in required fields (*)");
+                return false;
+            }
+        }
+        if (stepId === 'photos') {
+            if (!(data.photos && data.photos.length > 0)) {
+                toast.error("Please upload at least one photo");
+                return false;
+            }
+        }
         return true; // Others optional or handled
     };
 
@@ -290,17 +308,42 @@ export default function ProfileWizard({ onComplete }: { onComplete: (data: any) 
                                     const formData = new FormData();
                                     formData.append('audio', blob, 'voice-bio.webm');
                                     try {
+                                        // Ideally show "Analyzing" loading state here if upload is seemingly fast but analysis takes time.
+                                        // Our VoiceRecorder likely handles loading state for upload, but we can add a local one for "AI Processing".
+
                                         const res = await api.profile.uploadVoiceBio(formData);
                                         if (res.audioUrl) {
                                             update('voiceBioUrl', res.audioUrl);
                                         }
+                                        if (res.vibe) {
+                                            // Store vibe in data or local state to show it.
+                                            // Let's use a local state for the wizard to show the "Wow" factor.
+                                            setVibeResult(res.vibe);
+                                            toast.success("Voice Bio & AI Analysis Complete! ✨");
+                                        }
                                     } catch (e) {
                                         console.error("Voice Upload Failed", e);
-                                        alert("Failed to upload voice bio");
+                                        toast.error("Failed to upload voice bio");
                                     }
                                 }}
                                 existingAudioUrl={data.voiceBioUrl}
                             />
+
+                            {/* AI Vibe Result Display */}
+                            {vibeResult && (
+                                <div className="mt-6 bg-gradient-to-br from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100 shadow-sm animate-in zoom-in-50 duration-500">
+                                    <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-wide mb-2">✨ AI Vibe Check</h4>
+                                    <div className="text-2xl font-bold text-gray-900 mb-1">{vibeResult.vibe}</div>
+                                    <p className="text-sm text-gray-600 mb-3">{vibeResult.summary}</p>
+                                    <div className="flex flex-wrap justify-center gap-2">
+                                        {vibeResult.tags.map((tag: string, i: number) => (
+                                            <span key={i} className="px-3 py-1 bg-white text-indigo-600 text-xs font-bold rounded-full border border-indigo-200 shadow-sm">
+                                                #{tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Roboto_Mono } from "next/font/google";
+import { Inter, Playfair_Display, Roboto_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import ClientProviders from '@/components/ClientProviders';
@@ -7,6 +7,11 @@ import NetworkStatus from '@/components/NetworkStatus';
 
 const fontSans = Inter({
   variable: "--font-sans",
+  subsets: ["latin"],
+});
+
+const fontHeading = Playfair_Display({
+  variable: "--font-heading",
   subsets: ["latin"],
 });
 
@@ -48,7 +53,7 @@ export default function RootLayout({
           crossOrigin="anonymous"></script>
       </head>
       <body
-        className={`${fontSans.variable} ${fontMono.variable} antialiased`}
+        className={`${fontSans.variable} ${fontHeading.variable} ${fontMono.variable} antialiased`}
         suppressHydrationWarning
       >
         <ClientProviders>

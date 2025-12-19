@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/Toast';
 
 interface RegisterCardProps {
     onRegister: (data: any) => Promise<void>;
@@ -11,6 +12,7 @@ interface RegisterCardProps {
 }
 
 export default function RegisterCard({ onRegister, onGoogle }: RegisterCardProps) {
+    const toast = useToast();
     const [method, setMethod] = useState<'mobile' | 'email'>('mobile');
     const [step, setStep] = useState<'details' | 'otp'>('details');
     const [loading, setLoading] = useState(false);
@@ -38,7 +40,7 @@ export default function RegisterCard({ onRegister, onGoogle }: RegisterCardProps
                 }, 1000);
             } else {
                 setLoading(false);
-                alert("Please fill all fields properly.");
+                toast.error("Please fill all fields properly.");
             }
         } else {
             // Verify OTP

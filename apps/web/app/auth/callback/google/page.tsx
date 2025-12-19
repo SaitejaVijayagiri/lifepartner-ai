@@ -21,7 +21,8 @@ function GoogleCallbackContent() {
         const exchangeCode = async () => {
             try {
                 // Send code to backend
-                const res = await axios.post('http://localhost:4000/auth/google', { code });
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                const res = await axios.post(`${apiUrl}/auth/google`, { code });
 
                 if (res.data.token) {
                     localStorage.setItem('token', res.data.token);

@@ -1,5 +1,6 @@
 import express from 'express';
 import { pool } from '../db';
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ const ICEBREAKERS = {
     ],
     music: [
         "What's the last song you listened to on repeat?",
-        "If you could start a band, what would you name it?",
+        "If they made a movie about your life, who would play you?",
         "Concerts or Headphones?"
     ],
     default: [
@@ -34,12 +35,13 @@ const ICEBREAKERS = {
 };
 
 // POST /ai/icebreaker
-router.post('/icebreaker', async (req, res) => {
+router.post('/icebreaker', authenticateToken, async (req: any, res) => {
     try {
-        const { userId, targetUserId } = req.body;
+        const userId = req.user.userId;
+        const { targetUserId } = req.body;
 
-        if (!userId || !targetUserId) {
-            return res.status(400).json({ error: "Missing user IDs" });
+        if (!targetUserId) {
+            return res.status(400).json({ error: "Missing targetUserId" });
         }
 
         // 1. Fetch Target User's Profile

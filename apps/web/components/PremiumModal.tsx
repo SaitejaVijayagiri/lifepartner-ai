@@ -52,7 +52,7 @@ export const PremiumModal = ({ isOpen, onClose, user, onSuccess }: PremiumModalP
     const handlePayment = async () => {
         setLoading(true);
         try {
-            console.log("Starting Payment Flow...");
+            // console.log("Starting Payment Flow...");
             // 1. Create Order (Amount in INR: 499)
             const orderRes = await api.payments.createOrder(499, 'PREMIUM');
 

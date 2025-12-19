@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { api } from '@/lib/api';
 import GameModal from './GameModal';
 import { useSocket } from '@/context/SocketContext';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Video, Phone } from 'lucide-react';
 
 interface ChatWindowProps {
     connectionId: string;
@@ -16,11 +16,12 @@ interface ChatWindowProps {
     };
     onClose?: () => void;
     onVideoCall?: () => void;
+    onAudioCall?: () => void;
     className?: string; // For custom positioning
     isCallMode?: boolean; // To alter UI for video calls
 }
 
-export default function ChatWindow({ connectionId, partner, onClose, onVideoCall, className, isCallMode = false }: ChatWindowProps) {
+export default function ChatWindow({ connectionId, partner, onClose, onVideoCall, onAudioCall, className, isCallMode = false }: ChatWindowProps) {
     const socket = useSocket();
     const [messages, setMessages] = useState<any[]>([]);
     const [inputText, setInputText] = useState("");
@@ -149,15 +150,17 @@ export default function ChatWindow({ connectionId, partner, onClose, onVideoCall
                     <div className="flex gap-2 flex-shrink-0">
                         <button
                             onClick={() => {
-                                console.log("Play Game clicked");
                                 setShowGame(true);
                             }}
                             className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full hover:bg-purple-200 transition-colors font-bold border border-purple-200 whitespace-nowrap shadow-sm"
                         >
                             🎲 Play Game
                         </button>
-                        <button onClick={onVideoCall} className="text-gray-500 hover:text-indigo-600 transition-colors" title="Video Call">
-                            📹
+                        <button onClick={onVideoCall} className="p-2 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-full transition-colors" title="Video Call">
+                            <Video size={20} />
+                        </button>
+                        <button onClick={onAudioCall} className="p-2 text-gray-500 hover:bg-green-50 hover:text-green-600 rounded-full transition-colors" title="Audio Call">
+                            <Phone size={18} />
                         </button>
                         <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-xl leading-none">
                             ×

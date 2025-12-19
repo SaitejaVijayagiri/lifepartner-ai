@@ -28,7 +28,8 @@ function ResetPasswordContent() {
         setIsLoading(true);
 
         try {
-            await axios.post('http://localhost:4000/auth/reset-password', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+            await axios.post(`${apiUrl}/auth/reset-password`, {
                 email,
                 otp,
                 newPassword

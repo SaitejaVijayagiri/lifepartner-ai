@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
+import { useToast } from '@/components/ui/Toast';
 
 interface ProfileEditorProps {
     initialData: any;
@@ -12,6 +13,7 @@ interface ProfileEditorProps {
 }
 
 export default function ProfileEditor({ initialData, onSave, onCancel }: ProfileEditorProps) {
+    const toast = useToast();
     const [formData, setFormData] = useState(initialData || {});
     const [loading, setLoading] = useState(false);
 
@@ -37,7 +39,8 @@ export default function ProfileEditor({ initialData, onSave, onCancel }: Profile
                 onSave(formData);
             }
         } catch (err) {
-            alert("Failed to save profile.");
+            toast.error("Failed to save profile.");
+            // alert("Failed to save profile.");
         } finally {
             setLoading(false);
         }
@@ -73,7 +76,7 @@ export default function ProfileEditor({ initialData, onSave, onCancel }: Profile
                                 for (let i = 0; i < files.length; i++) {
                                     const file = files[i];
                                     if (file.size > 5 * 1024 * 1024) {
-                                        alert(`File ${file.name} is too large (>5MB)`);
+                                        toast.error(`File ${file.name} is too large (>5MB)`);
                                         continue;
                                     }
 
@@ -207,7 +210,7 @@ export default function ProfileEditor({ initialData, onSave, onCancel }: Profile
                                                     const detectedCity = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state_district || "Unknown City";
                                                     const detectedCountry = addr.country || "Unknown Country";
 
-                                                    console.log("GPS Address Found:", addr); // Debug hint
+                                                    // console.log("GPS Address Found:", addr); // Debug hint
 
                                                     handleChange('location', 'city', detectedCity);
                                                     handleChange('location', 'country', detectedCountry);
@@ -215,11 +218,11 @@ export default function ProfileEditor({ initialData, onSave, onCancel }: Profile
                                                     btn.innerText = "✅ Detected";
                                                     setTimeout(() => btn.innerText = "📍 Use GPS", 2000);
                                                 } catch (err) {
-                                                    alert("Could not fetch address details. Please enter manually.");
+                                                    toast.error("Could not fetch address details. Please enter manually.");
                                                     btn.innerText = "📍 Use GPS";
                                                 }
                                             }, () => {
-                                                alert("Permission denied or unavailable.");
+                                                toast.error("Permission denied or unavailable.");
                                                 btn.innerText = "📍 Use GPS";
                                             });
                                         }

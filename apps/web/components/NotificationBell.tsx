@@ -42,10 +42,10 @@ export const NotificationBell = () => {
 
         if (socket) {
             const handleNewNotification = (data: any) => {
-                console.log("🔔 New Notification:", data);
+                // console.log("🔔 New Notification:", data);
                 // Add to list, increment unread
-                setNotifications(prev => [data, ...prev]);
-                setUnreadCount(prev => prev + 1);
+                setNotifications((prev: any[]) => [data, ...prev]);
+                setUnreadCount((prev: number) => prev + 1);
             };
 
             socket.on('notification:new', handleNewNotification);
@@ -57,16 +57,16 @@ export const NotificationBell = () => {
 
     const markRead = async (id: string) => {
         try {
-            await api.put(`/notifications/${id}/read`, {});
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-            setUnreadCount(prev => Math.max(0, prev - 1));
+            await api.notifications.markRead(id);
+            setNotifications((prev: any[]) => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+            setUnreadCount((prev: number) => Math.max(0, prev - 1));
         } catch (e) { }
     };
 
     const markAllRead = async () => {
         try {
-            await api.put('/notifications/read-all', {});
-            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+            await api.notifications.markAllRead();
+            setNotifications((prev: any[]) => prev.map(n => ({ ...n, is_read: true })));
             setUnreadCount(0);
         } catch (e) { }
     };

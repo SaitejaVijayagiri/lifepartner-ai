@@ -54,7 +54,7 @@ export class AstrologyService {
         // Fallback if data missing (Average Score)
         if (i1 === -1 || i2 === -1) {
             return {
-                score: 18 + Math.floor(Math.random() * 10), // Random 18-28
+                score: 18, // Default Average Score (Neutral)
                 total: 36,
                 details: { error: "Nakshatra data missing" }
             };

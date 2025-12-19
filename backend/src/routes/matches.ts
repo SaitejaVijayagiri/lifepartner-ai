@@ -1,33 +1,20 @@
 
 import express from 'express';
 import { pool } from '../db';
-import { getUserId } from './profile'; // We might need to export this or copy it
+import { authenticateToken } from '../middleware/auth';
 import { AstrologyService } from '../services/astrology';
 
 const router = express.Router();
 const astrologyService = new AstrologyService();
 
 // Middleware duplications because I'm lazy to make a shared middleware file right now
-const getUser = (req: express.Request) => {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
-        try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(Buffer.from(base64, 'base64').toString());
-            return payload.userId;
-        } catch (e) { return null; }
-    }
-    return null;
-}
-
-router.get('/recommendations', async (req, res) => {
+// FIXED: Using imported getUserId
+router.get('/recommendations', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUser(req);
-        if (!userId) return res.json({ matches: [] }); // Or 401
+        const userId = req.user.userId;
 
         const client = await pool.connect();
+        // ... (rest of code)
 
         // 1. Get Me
         const meRes = await client.query("SELECT * FROM public.users u LEFT JOIN public.profiles p ON u.id = p.user_id WHERE u.id = $1", [userId]);
@@ -149,10 +136,9 @@ router.get('/recommendations', async (req, res) => {
 });
 
 // 3. AI Search Route
-router.post('/search', async (req, res) => {
+router.post('/search', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         const { query } = req.body;
         if (!query) return res.json({ matches: [] });
@@ -370,6 +356,41 @@ Params: ${params}
     } catch (e) {
         console.error("Search Error", e);
         res.status(500).json({ error: "Search failed" });
+    }
+});
+
+// 4. GET PDF Report (Premium / Free)
+router.get('/:id/report', authenticateToken, async (req: any, res) => {
+    try {
+        const userId = req.user.userId;
+        const { id } = req.params; // Partner ID
+
+        const client = await pool.connect();
+
+        // 1. Fetch Both Profiles
+        const p1 = await client.query('SELECT u.full_name, u.age, p.metadata FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = $1', [userId]);
+        const p2 = await client.query('SELECT u.full_name, u.age, p.metadata FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = $1', [id]);
+
+        client.release();
+
+        if (p1.rows.length === 0 || p2.rows.length === 0) {
+            return res.status(404).json({ error: "Profiles not found" });
+        }
+
+        const profileA = { ...p1.rows[0].metadata, full_name: p1.rows[0].full_name, age: p1.rows[0].age };
+        const profileB = { ...p2.rows[0].metadata, full_name: p2.rows[0].full_name, age: p2.rows[0].age };
+
+        // 2. Set Headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=compatibility_report_${id}.pdf`);
+
+        // 3. Generate PDF
+        const { generatePDFReport } = await import('../services/reportGenerator');
+        await generatePDFReport(profileA, profileB, res);
+
+    } catch (e: any) {
+        console.error("Report Gen Error", e);
+        res.status(500).json({ error: "Failed to generate report" });
     }
 });
 

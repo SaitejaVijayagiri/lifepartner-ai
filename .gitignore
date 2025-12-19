@@ -24,18 +24,13 @@ out/
 .vscode/
 .idea/
 
-# Large Uploads & Assets
+# Large Uploads (but allow public assets)
 backend/uploads/
-apps/web/public/uploads/
-*.mp4
-*.MOV
-*.avi
-*.wmv
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.webp
-*.tar
-*.gz
-*.zip
+!apps/web/public/assets/
+# Block only user uploads if possible, or explicit paths.
+# For now, simplistic approach is okay, but let's UN-IGNORE app assets.
+!apps/web/public/*.png
+!apps/web/public/*.jpg
+!apps/web/public/*.jpeg
+!apps/web/public/*.svg
+!apps/web/public/images/

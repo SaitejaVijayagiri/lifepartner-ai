@@ -1,4 +1,4 @@
-const API_URL = 'https://lifepartner-ai.onrender.com'; // Hardcoded for immediate production fix
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -31,6 +31,7 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 
     if (res.status === 401) {
         if (typeof window !== 'undefined') {
+            console.warn("Session expired. Redirecting to login.");
             localStorage.removeItem('token');
             localStorage.removeItem('userId');
             window.location.href = '/login';
@@ -114,6 +115,10 @@ export const api = {
         verifyPayment: (payload: any) => fetchAPI('/payments/verify', { method: 'POST', body: JSON.stringify(payload) })
     },
     notifications: {
+        register: (token: string, platform: string) => fetchAPI('/notifications/register', {
+            method: 'POST',
+            body: JSON.stringify({ token, platform })
+        }),
         getAll: () => fetchAPI('/notifications'),
         markRead: (id: string) => fetchAPI(`/notifications/${id}/read`, { method: 'PUT' }),
         markAllRead: () => fetchAPI('/notifications/read-all', { method: 'PUT' })
@@ -131,5 +136,9 @@ export const api = {
             method: 'POST',
             body: JSON.stringify({ userId: typeof window !== 'undefined' ? localStorage.getItem('userId') : null, targetUserId })
         })
+    },
+    calls: {
+        getHistory: () => fetchAPI('/calls/history'),
+        log: (data: any) => fetchAPI('/calls/log', { method: 'POST', body: JSON.stringify(data) })
     }
 };

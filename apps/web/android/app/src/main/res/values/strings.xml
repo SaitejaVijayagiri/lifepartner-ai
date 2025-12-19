@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LifePartner</string>
+    <string name="title_activity_main">LifePartner</string>
+    <string name="package_name">com.lifepartner.ai</string>
+    <string name="custom_url_scheme">com.lifepartner.ai</string>
+</resources>

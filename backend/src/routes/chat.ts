@@ -3,16 +3,14 @@ import { sanitizeContent } from '../utils/contentFilter';
 
 import { pool } from '../db';
 
+import { authenticateToken } from '../middleware/auth';
+
 const router = express.Router();
 
 // GET Chat History
-router.get('/:connectionId/history', async (req: any, res) => {
+router.get('/:connectionId/history', authenticateToken, async (req: any, res) => {
     const { connectionId } = req.params;
-    const userId = req.user?.userId; // Assuming auth middleware attached this
-
-    if (!userId) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = req.user.userId;
 
     try {
         const client = await pool.connect();
@@ -20,7 +18,7 @@ router.get('/:connectionId/history', async (req: any, res) => {
             SELECT id, sender_id, receiver_id, content as text, timestamp 
             FROM public.messages 
             WHERE (sender_id = $1 AND receiver_id = $2) 
-               OR (sender_id = $2 AND receiver_id = $1)
+            OR (sender_id = $2 AND receiver_id = $1)
             ORDER BY timestamp ASC
         `, [userId, connectionId]);
 
@@ -40,13 +38,14 @@ router.get('/:connectionId/history', async (req: any, res) => {
     }
 });
 
-// SEND Message (Fallback / API based)
-router.post('/:connectionId/send', async (req: any, res) => {
+// SEND Message
+router.post('/:connectionId/send', authenticateToken, async (req: any, res) => {
     const { connectionId } = req.params; // receiverId
-    const { text, senderId } = req.body; // senderId usually from token, but using body for flexibility
+    const { text } = req.body;
+    const senderId = req.user.userId;
 
-    if (!text || !senderId) {
-        return res.status(400).json({ error: "Missing text or senderId" });
+    if (!text) {
+        return res.status(400).json({ error: "Missing text" });
     }
 
     const cleanText = sanitizeContent(text);

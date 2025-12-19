@@ -1,4 +1,5 @@
 'use client';
+import { useToast } from '@/components/ui/Toast';
 
 import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
@@ -9,7 +10,7 @@ import GoogleAdCard from './GoogleAdCard';
 import GiftModal from './GiftModal';
 
 // API Configuration
-const API_URL = 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 interface Reel {
     id: string;
@@ -33,6 +34,7 @@ interface Reel {
 type FeedItem = Reel | AdItem;
 
 export default function ReelFeed() { // Removed 'users' prop as we fetch feed directly
+    const toast = useToast();
     const [reels, setReels] = useState<FeedItem[]>([]);
     const [activeIndex, setActiveIndex] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -94,11 +96,11 @@ export default function ReelFeed() { // Removed 'users' prop as we fetch feed di
 
         // Validation
         if (!['video/mp4', 'video/quicktime', 'video/webm'].includes(file.type)) {
-            alert('Invalid file format. MP4, MOV, WEBM only.');
+            toast.error('Invalid file format. MP4, MOV, WEBM only.');
             return;
         }
         if (file.size > 100 * 1024 * 1024) {
-            alert('File too large (Max 100MB)');
+            toast.error('File too large (Max 100MB)');
             return;
         }
 
@@ -112,10 +114,10 @@ export default function ReelFeed() { // Removed 'users' prop as we fetch feed di
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            alert('Reel uploaded! 🚀');
+            toast.success('Reel uploaded! 🚀');
             loadFeed(); // Refresh feed
         } catch (err: any) {
-            alert(`Upload failed: ${err.response?.data?.error || err.message}`);
+            toast.error(`Upload failed: ${err.response?.data?.error || err.message}`);
         } finally {
             setIsUploading(false);
             e.target.value = '';
@@ -202,7 +204,7 @@ export default function ReelFeed() { // Removed 'users' prop as we fetch feed di
             }));
 
         } catch (e) {
-            alert("Failed to post comment");
+            toast.error("Failed to post comment");
         }
     };
 

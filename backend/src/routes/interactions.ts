@@ -1,35 +1,14 @@
 import express from 'express';
 import { pool } from '../db';
 import { getIO } from '../socket'; // Import socket getter
+import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
-const getUserId = (req: express.Request) => {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
-        try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(Buffer.from(base64, 'base64').toString());
-            return payload.userId;
-        } catch (e) { return null; }
-    }
-    return null;
-}
-
-// Get Requests (Pending matches where I am 'user_b' - traditionally receiving?)
-// Actually matches table has user_a and user_b.
-// Let's assume interactions are stored in `matches` table where status='pending'.
-// But `matches` is usually AI recommendations.
-// Let's look at init.sql: "matches" table has user_a, user_b, status.
-// A sent request is: INSERT INTO matches (user_a, user_b, status='pending').
-// So incoming requests for me: user_b = me AND status = 'pending'.
-
-router.get('/requests', async (req, res) => {
+// Get Requests (Pending matches where I am 'user_b')
+router.get('/requests', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         const client = await pool.connect();
         const result = await client.query(`
@@ -61,10 +40,9 @@ router.get('/requests', async (req, res) => {
 });
 
 // Get Connections (Accepted)
-router.get('/connections', async (req, res) => {
+router.get('/connections', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         const client = await pool.connect();
         // Find matches where status='accepted' AND (user_a=me OR user_b=me)
@@ -106,10 +84,9 @@ router.get('/connections', async (req, res) => {
 });
 
 // Delete Connection
-router.delete('/connections/:id', async (req, res) => {
+router.delete('/connections/:id', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         const { id } = req.params;
         // Verify user is part of the connection
@@ -128,9 +105,9 @@ router.delete('/connections/:id', async (req, res) => {
 });
 
 // Send Interest (Connect Request)
-router.post('/interest', async (req, res) => {
+router.post('/interest', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
+        const userId = req.user.userId;
         const { toUserId } = req.body;
 
         const client = await pool.connect();
@@ -173,17 +150,12 @@ router.post('/interest', async (req, res) => {
 });
 
 // Revoke Interest (Cancel Request)
-router.delete('/interest/:toUserId', async (req, res) => {
+router.delete('/interest/:toUserId', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
+        const userId = req.user.userId;
         const { toUserId } = req.params;
 
         const client = await pool.connect();
-        // Only remove status=pending. Keep row if is_liked=true?
-        // Actually, users might want to keep the "Like" if they cancel request?
-        // Let's assume if I cancel request, I just set status=NULL.
-        // If is_liked is false AND status becomes null, effectively row is dead (but exists).
-        // Postgres doesn't auto-delete. That's fine.
         await client.query(`
             UPDATE matches 
             SET status = NULL 
@@ -199,9 +171,9 @@ router.delete('/interest/:toUserId', async (req, res) => {
 });
 
 // Like Profile (Instagram Style)
-router.post('/like', async (req, res) => {
+router.post('/like', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
+        const userId = req.user.userId;
         const { toUserId } = req.body;
 
         const client = await pool.connect();
@@ -238,9 +210,9 @@ router.post('/like', async (req, res) => {
 });
 
 // Unlike Profile (Instagram Style)
-router.delete('/like/:toUserId', async (req, res) => {
+router.delete('/like/:toUserId', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
+        const userId = req.user.userId;
         const { toUserId } = req.params;
 
         const client = await pool.connect();
@@ -261,7 +233,7 @@ router.delete('/like/:toUserId', async (req, res) => {
 });
 
 // Accept
-router.post('/:id/accept', async (req, res) => {
+router.post('/:id/accept', authenticateToken, async (req: any, res) => {
     try {
         const { id } = req.params;
         const client = await pool.connect();
@@ -274,7 +246,7 @@ router.post('/:id/accept', async (req, res) => {
 });
 
 // Decline
-router.post('/:id/decline', async (req, res) => {
+router.post('/:id/decline', authenticateToken, async (req: any, res) => {
     try {
         const { id } = req.params;
         const client = await pool.connect();
@@ -287,10 +259,9 @@ router.post('/:id/decline', async (req, res) => {
 });
 
 // Report User
-router.post('/report', async (req, res) => {
+router.post('/report', authenticateToken, async (req: any, res) => {
     try {
-        const userId = getUserId(req);
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const userId = req.user.userId;
 
         const { reportedId, reason, details } = req.body;
         if (!reportedId || !reason) return res.status(400).json({ error: "Missing fields" });

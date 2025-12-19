@@ -49,15 +49,48 @@ router.post('/register', async (req, res) => {
         // 5. Insert User (Unverified)
         await client.query('BEGIN');
 
+        // Referral Logic
+        let referredByUserId = null;
+        if (req.body.referralCode) {
+            const referrerRes = await client.query("SELECT id FROM public.users WHERE referral_code = $1", [req.body.referralCode]);
+            if (referrerRes.rows.length > 0) {
+                referredByUserId = referrerRes.rows[0].id;
+                console.log(`🤝 Referred by: ${referredByUserId}`);
+            }
+        }
+
+        // Generate Self Referral Code (First 4 name + 4 random)
+        const safeName = full_name || "User";
+        const baseName = safeName.replace(/[^a-zA-Z]/g, '').substring(0, 4).toUpperCase();
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        const myReferralCode = `${baseName}${randomSuffix}`;
+
         const userRes = await client.query(
             `INSERT INTO public.users (
                 email, phone, password_hash, full_name, age, gender, location_name, 
-                otp_code, otp_expires_at, is_verified
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE) 
+                otp_code, otp_expires_at, is_verified, referral_code, referred_by
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE, $10, $11) 
             RETURNING id, full_name`,
-            [email, phone, passwordHash, full_name, age, gender, location_name, otp, otpExpiresAt]
+            [email, phone, passwordHash, full_name, age, gender, location_name, otp, otpExpiresAt, myReferralCode, referredByUserId]
         );
         const newUser = userRes.rows[0];
+
+        // Process Referral Rewards (Lazy Wallet Creation handled by wallet routes usually, but we insert directly here)
+        if (referredByUserId) {
+            // 1. Credit Referrer (+50 Coins)
+            await client.query(
+                `INSERT INTO public.transactions (user_id, amount, type, status, description, metadata) 
+                 VALUES ($1, 50, 'REFERRAL_REWARD', 'SUCCESS', 'Referral Bonus', $2)`,
+                [referredByUserId, JSON.stringify({ referredUser: newUser.id })]
+            );
+
+            // 2. Credit New User (+20 Coins)
+            await client.query(
+                `INSERT INTO public.transactions (user_id, amount, type, status, description, metadata) 
+                 VALUES ($1, 20, 'REFERRAL_BONUS', 'SUCCESS', 'Signup Bonus', $2)`,
+                [newUser.id, JSON.stringify({ referrer: referredByUserId })]
+            );
+        }
 
         // 6. Initialize Profile with Metadata
         const defaultMetadata = {
@@ -340,7 +373,7 @@ router.post('/google', async (req, res) => {
                 code,
                 client_id: '326304538770-5tskm10njnb8e5kkh1gdp4as7sb7km9b.apps.googleusercontent.com',
                 client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-                redirect_uri: 'http://localhost:3005/auth/callback/google',
+                redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3005/auth/callback/google',
                 grant_type: 'authorization_code'
             })
         });

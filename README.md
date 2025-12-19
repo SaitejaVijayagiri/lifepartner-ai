@@ -5,17 +5,28 @@
 ## 🚀 Key Features
 
 -   **Prompt-Based Matching**: Users describe their ideal partner in natural language. AI extracts values and personality traits.
--   **Psychometric Analysis**: Matches are scored based on Big 5 Personality compatibility and Life Vision alignment.
--   **Relationship Simulation**: "Simulate Conflict" feature predicts how a couple would handle real-world stress (e.g., finances).
--   **AI Mediator**: Chat system detects toxicity and offers mediation suggestions during conflicts.
--   **Safety First**: Automated "Red Flag" detection for manipulation and unrealistic expectations.
+-   **Viral Reels**: TikTok-style video feed for users to showcase their personality and "Vibe".
+-   **Voice Bios**: Record and listen to audio introductions for a more authentic connection.
+-   **Gamified Discovery**: "Couple Quiz" games to test compatibility in a fun way.
+-   **Real-Time Action**: Chat, Video Calls, and Instant Notifications (Socket.io).
+-   **Trust & Safety**: Verified Profiles, Report System, and AI Mediator for conflict resolution.
+
+## 🧠 AI Architecture (Free Lifetime)
+This project is architected to run **100% Free** using:
+1.  **Voice Transcription**: Runs locally using `Xenova/whisper-tiny` (No API cost).
+2.  **Intelligence**: Supports **Google Gemini Pro** (Free Tier) for personality analysis (Vibe Check), matching, and chat assistance.
+    - Simply get a free key from [Google AI Studio](https://aistudio.google.com/) and add it as `GEMINI_API_KEY`.
+3.  **Fallback**: Includes a local key-word engine if no internet/keys are available.
 
 ## 🛠 Tech Stack
 
--   **Frontend**: Next.js 14 (App Router), TailwindCSS, TypeScript.
--   **Backend**: Node.js, Express, TypeScript.
--   **AI**: LangChain.js (Mocked for demo, pluggable with OpenAI/Ollama).
--   **Database**: PostgreSQL + pgvector + PostGIS (Dockerized).
+-   **Frontend**: Next.js 14, Tailwind CSS, Lucide React
+-   **Backend**: Node.js, Express, PostgreSQL
+-   **AI**: LangChain, Google Gemini, Xenova Transformers
+-   **Realtime**: Socket.io
+-   **Storage**: Supabase (Free Tier)/Docker) + pgvector.
+-   **Storage**: Supabase Storage / Local Uploads.
+-   **Payments**: Razorpay / Cashfree Integration.
 
 ## 🏃‍♂️ Getting Started
 

@@ -37,9 +37,14 @@ If you have Docker installed, you can switch to the Production Database locally:
 2.  **Build Command**: `cd backend && npm install && npm run build`
 3.  **Start Command**: `cd backend && npm start`
 4.  **Environment Variables**:
-    -   `DATABASE_URL`: `postgres://user:pass@host/dbname`
-    -   `OPENAI_API_KEY`: `sk-proj-...`
-    -   `MOCK_AI`: `false`
+    -   `DATABASE_URL`: `postgres://...`
+    -   `GEMINI_API_KEY`: `AIza...` (Free Tier)
+    -   `OPENAI_API_KEY`: (Optional)
+    -   `CASHFREE_APP_ID`: ...
+    -   `CASHFREE_SECRET_KEY`: ...
+    -   `SUPABASE_URL`: ...
+    -   `SUPABASE_KEY`: ...
+    -   `JWT_SECRET`: ...
 
 ### Frontend (Static Site)
 1.  Connect your Repo.

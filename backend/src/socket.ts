@@ -1,7 +1,7 @@
-
 import { Server, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { pool } from './db';
+import jwt from 'jsonwebtoken';
 
 let io: Server;
 
@@ -13,38 +13,53 @@ export const initSocket = (httpServer: HttpServer) => {
         }
     });
 
+    // MIDDLEWARE: Authentication
+    io.use((socket, next) => {
+        const token = socket.handshake.auth.token || socket.handshake.query.token;
+
+        if (!token) {
+            return next(new Error("Authentication error"));
+        }
+
+        jwt.verify(token as string, process.env.JWT_SECRET as string, (err, decoded) => {
+            if (err) return next(new Error("Authentication error"));
+            socket.data.user = decoded; // Store user info in socket session
+            next();
+        });
+    });
+
     io.on('connection', (socket: Socket) => {
-        console.log('Socket User Connected:', socket.id);
+        const userId = socket.data.user?.userId;
+        console.log(`Socket User Connected: ${socket.id} (User: ${userId})`);
 
         // User Greeting
         socket.emit('me', socket.id);
 
         // Disconnect
         socket.on('disconnect', () => {
-            console.log('Socket User Disconnected:', socket.id);
+            // console.log('Socket User Disconnected:', socket.id);
             socket.broadcast.emit('callEnded');
         });
 
         // JOIN "Personal Room" (using userId as room name)
-        socket.on("join-room", (userId: string) => {
-            console.log(`User ${userId} joined room ${userId}`);
+        // Auto-join based on auth, ignore client param if it doesn't match (or just force it)
+        if (userId) {
             socket.join(userId);
-        });
+            console.log(`User ${userId} auto-joined room ${userId}`);
+        }
 
         /**
          * CALL USER
          */
-        socket.on("callUser", async ({ userToCall, signalData, from, name }) => {
-            console.log(`Call Initiated: ${from} -> ${userToCall}`);
+        socket.on("callUser", async ({ userToCall, signalData, name, type }) => {
+            const from = userId; // Secure source
+            console.log(`Call Initiated: ${from} -> ${userToCall} (${type || 'video'})`);
 
             try {
                 // REVENUE PROTECTION: Check if Caller is Premium
-                // Assuming 'from' is a valid userId for now.
-                // TODO: Verify 'from' against actual socket auth in future refactor.
-
                 const client = await pool.connect();
                 // Simple validation to prevent crashes if 'from' is 'me' or invalid
-                if (from && from !== 'me') {
+                if (from) {
                     const userCheck = await client.query("SELECT is_premium FROM public.users WHERE id = $1", [from]);
                     if (userCheck.rows.length === 0 || !userCheck.rows[0].is_premium) {
                         console.log(`Blocked Call from Free User: ${from}`);
@@ -58,7 +73,8 @@ export const initSocket = (httpServer: HttpServer) => {
                 io.to(userToCall).emit("callUser", {
                     signal: signalData,
                     from,
-                    name
+                    name,
+                    type // Pass the type (audio/video)
                 });
 
             } catch (e) {
@@ -70,20 +86,26 @@ export const initSocket = (httpServer: HttpServer) => {
          * ANSWER CALL
          */
         socket.on("answerCall", (data) => {
-            console.log(`Call Answered by ${data.from}`);
+            // console.log(`Call Answered by ${userId}`);
             io.to(data.to).emit("callAccepted", data.signal);
+        });
+
+        /**
+         * TYPING
+         */
+        socket.on("typing", ({ to }) => {
+            io.to(to).emit("typing", { from: userId });
         });
 
         /**
          * CHAT LOGIC
          */
-        socket.on("sendMessage", async ({ to, text, from }) => {
-            console.log(`Msg: ${from} -> ${to}: ${text}`);
+        socket.on("sendMessage", async ({ to, text }) => {
+            const from = userId; // Secure source
+            // console.log(`Msg: ${from} -> ${to}: ${text}`);
 
             try {
                 // 1. Save to DB
-                // Assuming 'from' and 'to' are UUIDs.
-                // In a real app, 'from' should be verified from socket.user.id
                 const client = await pool.connect();
                 await client.query(
                     `INSERT INTO public.messages (sender_id, receiver_id, content) VALUES ($1, $2, $3)`,
@@ -99,7 +121,6 @@ export const initSocket = (httpServer: HttpServer) => {
                 });
             } catch (e) {
                 console.error("Message Persistence Error:", e);
-                // Optionally emit error back to sender
             }
         });
     });

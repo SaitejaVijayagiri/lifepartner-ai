@@ -37,7 +37,7 @@ export default function MatchCard({ match, onConnect, onViewProfile, onStoryClic
         if (photos.length <= 1 || isHovered) return;
 
         const interval = setInterval(() => {
-            setCurrentPhotoIndex(prev => (prev + 1) % photos.length);
+            setCurrentPhotoIndex((prev: number) => (prev + 1) % photos.length);
         }, 3000);
 
         return () => clearInterval(interval);
@@ -81,7 +81,7 @@ export default function MatchCard({ match, onConnect, onViewProfile, onStoryClic
         // Optimistic Toggle
         const newIsLiked = !isLiked;
         setIsLiked(newIsLiked);
-        setLikeCount(prev => newIsLiked ? prev + 1 : prev - 1);
+        setLikeCount((prev: number) => newIsLiked ? prev + 1 : prev - 1);
 
         try {
             if (newIsLiked) {
@@ -92,7 +92,7 @@ export default function MatchCard({ match, onConnect, onViewProfile, onStoryClic
         } catch (err) {
             // Revert
             setIsLiked(!newIsLiked);
-            setLikeCount(prev => !newIsLiked ? prev + 1 : prev - 1);
+            setLikeCount((prev: number) => !newIsLiked ? prev + 1 : prev - 1);
         }
     };
 
@@ -219,6 +219,7 @@ export default function MatchCard({ match, onConnect, onViewProfile, onStoryClic
                     <div className="flex flex-wrap gap-2 text-gray-100 text-xs font-medium mb-3 opacity-95">
                         <span className="px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10">📏 {match.height || "N/A"}</span>
                         <span className="px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10">💼 {match.role || "Professional"}</span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10">🕉️ {match.religion || "Hindu"}</span>
                         <span className="px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10">📍 {match.location?.city || "India"}</span>
                     </div>
 

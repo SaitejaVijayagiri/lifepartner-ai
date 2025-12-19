@@ -17,10 +17,13 @@ const HEADERS = {
     'Content-Type': 'application/json'
 };
 
-// Create Order
-router.post('/create-order', async (req, res) => {
+import { authenticateToken } from '../middleware/auth';
+
+// Create Order (Authenticated)
+router.post('/create-order', authenticateToken, async (req: any, res) => {
     try {
-        const { amount, userId, phone, name } = req.body;
+        const { amount, phone, name } = req.body;
+        const userId = req.user.userId; // Secure User ID
 
         const orderId = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
@@ -29,7 +32,7 @@ router.post('/create-order', async (req, res) => {
             order_currency: "INR",
             order_id: orderId,
             customer_details: {
-                customer_id: userId || "guest_user",
+                customer_id: userId,
                 customer_phone: phone || "9999999999",
                 customer_name: name || "User",
                 customer_email: "user@example.com"
@@ -199,10 +202,12 @@ const verifyPaymentInternal = async (orderId: string, expectedUserId?: string) =
     }
 };
 
-// Client-Side Verification (called by frontend)
-router.post('/verify', async (req, res) => {
+// Client-Side Verification (called by frontend) - Authenticated
+router.post('/verify', authenticateToken, async (req: any, res) => {
     try {
-        const { orderId, userId } = req.body;
+        const { orderId } = req.body;
+        const userId = req.user.userId; // Secure User ID
+
         // userId from body helps avoiding extra fetch
         const result = await verifyPaymentInternal(orderId, userId);
 

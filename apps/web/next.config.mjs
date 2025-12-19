@@ -16,11 +16,11 @@ const nextConfig = {
         return [
             {
                 source: '/api/:path*',
-                destination: 'http://localhost:4000/:path*',
+                destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/:path*`,
             },
             {
                 source: '/socket.io/:path*',
-                destination: 'http://localhost:4000/socket.io/:path*',
+                destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/socket.io/:path*`,
             },
         ];
     },

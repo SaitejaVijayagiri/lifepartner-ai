@@ -3,7 +3,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const BASE_URL = 'http://localhost:4000';
+const BASE_URL = process.env.API_URL || 'http://localhost:4000';
 // Helper to measure time
 const time = async (label: string, fn: () => Promise<any>) => {
     const start = Date.now();

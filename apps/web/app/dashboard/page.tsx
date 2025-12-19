@@ -1,1107 +1,261 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { Bell, Search, Sparkles, Filter, Briefcase, MapPin, Ruler } from 'lucide-react';
+
+/* Components */
 import MatchCard from '@/components/MatchCard';
-import ProfileEditor from '@/components/ProfileEditor';
-// import ProfileModal from '@/components/ProfileModal';
-import dynamic from 'next/dynamic';
-const ProfileModal = dynamic(() => import('@/components/ProfileModal'), {
-    loading: () => <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"><div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div></div>,
-    ssr: false
-});
-import ChatWindow from '@/components/ChatWindow';
-import VideoCallModal from '@/components/VideoCallModal';
-import ReelFeed from '@/components/ReelFeed';
-import { Toaster, useToast } from '@/components/ui/Toast';
-import { PremiumModal } from '@/components/PremiumModal';
-import { NotificationBell } from '@/components/NotificationBell';
-import { Heart, MessageCircle, User, Video, Users, LogOut, Sparkles, Trash2, Crown, X, Coins } from 'lucide-react';
-import CoinStoreModal from '@/components/CoinStoreModal';
+import { BottomNav } from '@/components/BottomNav';
+import StoryModal from '@/components/StoryModal';
+import { NotificationBell } from '@/components/NotificationBell'; // Ensure default export or named
 
+/* Mock Data for Stories */
+const STORIES = [
+    { id: '1', user: 'Ananya', img: 'https://i.pravatar.cc/150?u=1' },
+    { id: '2', user: 'Rahul', img: 'https://i.pravatar.cc/150?u=2' },
+    { id: '3', user: 'Vikram', img: 'https://i.pravatar.cc/150?u=3' },
+    { id: '4', user: 'Sneha', img: 'https://i.pravatar.cc/150?u=4', hasStory: true },
+    { id: '5', user: 'Priya', img: 'https://i.pravatar.cc/150?u=5', hasStory: true },
+];
 
-export default function DashboardPage() {
-    const [activeTab, setActiveTab] = useState<'matches' | 'requests' | 'connections' | 'profile' | 'reels'>('matches');
+/* Mock Data for Events */
+const EVENTS = [
+    { id: 1, title: 'Speed Dating: Bangalore', date: 'Sat, 14 Dec', time: '6:00 PM', image: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&q=80' },
+    { id: 2, title: 'Astrology Workshop', date: 'Sun, 15 Dec', time: '11:00 AM', image: 'https://images.unsplash.com/photo-1533285962792-0c3c5e9cb0d7?w=800&q=80' },
+];
+
+export default function Dashboard() {
+    const router = useRouter();
     const [matches, setMatches] = useState<any[]>([]);
-    const [requests, setRequests] = useState<any[]>([]);
-    const [connections, setConnections] = useState<any[]>([]);
-    const [myProfile, setMyProfile] = useState<any>(null);
-    const [isEditing, setIsEditing] = useState(false);
-    const [selectedProfile, setSelectedProfile] = useState<any>(null);
-    const [viewingReel, setViewingReel] = useState<string | null>(null);
-    const [viewingStory, setViewingStory] = useState<any>(null); // Changed from boolean to any to support story object
-    const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
-    const [showConnectionsModal, setShowConnectionsModal] = useState(false);
-    const [showPremiumModal, setShowPremiumModal] = useState(false);
-    const [showCoinStore, setShowCoinStore] = useState(false);
-
-    // Chat & Video State
-    const [activeChat, setActiveChat] = useState<any>(null); // The accepted interaction object
-    const [isVideoCall, setIsVideoCall] = useState(false);
-
     const [loading, setLoading] = useState(true);
-    const toast = useToast();
+    const [activeTab, setActiveTab] = useState('matches'); // matches, reels, requests, chat, profile
+    const [requestsCount, setRequestsCount] = useState(0);
 
-    // Auth Check - redirect to login if not authenticated
+    /* Story State */
+    const [currentStoryIndex, setCurrentStoryIndex] = useState<number | null>(null);
+
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = '/login';
-        }
-    }, []);
-
-    // Fetch Data
-    const loadData = async () => {
-        try {
-            // 1. Fetch Profile FAST (Blocks UI Structure)
-            // If we don't have profile, we can't show much anyway
-            try {
-                const me = await api.profile.getMe();
-                setMyProfile(me);
-                setLoading(false); // <--- UNBLOCK UI HERE
-            } catch (e) {
-                console.error("Failed to load profile", e);
-                // If profile fails, likely auth error, but let's not break everything
-                setLoading(false);
+        const checkAuth = async () => {
+            // Basic Auth Check
+            const token = localStorage.getItem('token');
+            if (!token) {
+                router.push('/login');
                 return;
             }
+            fetchMatches();
+            // Mock Requests Count
+            setRequestsCount(3);
+        };
+        checkAuth();
+    }, [router]);
 
-            // 2. Fetch Heavy Data (Matches, Connections) in Background
-            // Don't set loading=true here, just let them populate
-            const [matchesColors, requestsData, connectionsData] = await Promise.all([
-                api.matches.getAll().catch(e => ({ matches: [] })),
-                api.interactions.getRequests().catch(e => []),
-                api.interactions.getConnections().catch(e => [])
-            ]);
-
-            setMatches(matchesColors.matches || []);
-            setRequests(requestsData || []);
-            setConnections(connectionsData || []);
-
-        } catch (err) {
-            console.error("Failed to load dashboard data", err);
-            toast.error("Network issue. Some data might be missing.");
-        }
-    };
-
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    // Handle Payment Success/Redirect
-    useEffect(() => {
-        const verify = async () => {
-            const params = new URLSearchParams(window.location.search);
-            const orderId = params.get('order_id');
-            const type = params.get('type');
-            const coins = params.get('coins');
-
-            if (orderId) {
-                // Clear URL to prevent re-run
-                window.history.replaceState({}, '', '/dashboard');
-
-                toast.success("Verifying payment...", { duration: 2000 });
-
-                try {
-                    // We need myProfile.id, wait for it if not loaded? 
-                    // Actually api.profile.getMe() or localStorage usually has userId,
-                    // but let's assume valid auth token handles identification or we need userId explicitly.
-                    // verifyPayment expects payload with input options.
-
-                    const userId = myProfile?.id || localStorage.getItem('userId'); // Ensure we have ID
-                    if (!userId) return;
-
-                    await api.payments.verifyPayment({
-                        orderId,
-                        userId,
-                        type: type || 'COINS',
-                        coins: coins ? parseInt(coins) : 0
-                    });
-
-                    if (type === 'PREMIUM') {
-                        toast.success("🌟 Premium Activated! You are now a VIP member.");
-                        // Trigger confetti?
-                    } else {
-                        toast.success(`💰 Success! ${coins || 'Coins'} added to your wallet.`);
-                    }
-
-                    // Refresh Data
-                    loadData();
-                } catch (e: any) {
-                    console.error("Payment Verify Error", e);
-                    toast.error("Payment verification failed. Contact support if deducted.");
-                }
-            }
-        }
-
-        // Only run if we have profile or at least token check done
-        if (!loading) {
-            verify();
-        }
-    }, [loading, myProfile?.id]); // Depend on loading so we don't run before auth check
-
-    const handleAccept = async (reqId: string) => {
+    const fetchMatches = async () => {
         try {
-            await api.interactions.acceptRequest(reqId);
-            setRequests(prev => prev.filter(r => r.interactionId !== reqId));
-
-            // Refresh connections to show the new chat immediately
-            const newConns = await api.interactions.getConnections();
-            setConnections(newConns);
-
-            toast.success("Request Accepted! You can now chat.");
+            const data = await api.matches.getAll();
+            setMatches(data.matches || []);
         } catch (err) {
-            toast.error("Failed to accept request.");
-        }
-    };
-
-    const handleDecline = async (reqId: string) => {
-        try {
-            await api.interactions.declineRequest(reqId);
-            setRequests(prev => prev.filter(r => r.interactionId !== reqId));
-            toast.info("Request declined.");
-        } catch (err) {
-            toast.error("Failed to decline.");
-        }
-    };
-
-    const handleProfileSave = (newData: any) => {
-        setMyProfile(newData);
-        setIsEditing(false);
-        toast.success("Profile updated successfully!");
-    };
-
-    const [uploadProgress, setUploadProgress] = useState(0);
-
-    const handleStoryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || e.target.files.length === 0) return;
-        const file = e.target.files[0];
-
-        // Frontend Limit Check: Removed to allow backend FIFO (Auto-delete oldest)
-        // if (myProfile?.stories?.length >= 5) {
-        //    toast.error("Limit reached: You can only have 5 active stories.");
-        //    return;
-        // }
-
-        try {
-            setLoading(true);
-            setUploadProgress(1); // Start progress
-            const formData = new FormData();
-            formData.append('media', file);
-
-            // Use direct XHR for progress since fetch doesn't support it easily
-            await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', `${process.env.NEXT_PUBLIC_API_URL}/profile/stories`);
-
-                // Add Auth Token
-                const token = localStorage.getItem('token');
-                if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percentComplete = (event.loaded / event.total) * 100;
-                        setUploadProgress(percentComplete);
-                    }
-                };
-
-                xhr.onload = async () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve(xhr.response);
-                    } else {
-                        reject(new Error(JSON.parse(xhr.response).error || 'Upload failed'));
-                    }
-                };
-
-                xhr.onerror = () => reject(new Error('Upload failed'));
-                xhr.send(formData);
-            });
-
-            toast.success("Story added! 📸");
-
-            // Reload profile to see new story
-            const me = await api.profile.getMe();
-            setMyProfile(me);
-        } catch (err: any) {
-            toast.error(err.message || "Failed to upload story.");
+            console.error('Failed to load matches', err);
         } finally {
             setLoading(false);
-            setUploadProgress(0); // Reset
-            // Clear input
-            e.target.value = '';
         }
     };
 
-    const handleLogout = () => {
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
-            window.location.href = '/';
-        }
-    };
+    // --- RENDERERS ---
 
-    const navItems = [
-        { id: 'matches', label: 'Matches', icon: Heart },
-        { id: 'reels', label: 'Vibe Reels', icon: Video },
-        { id: 'requests', label: 'Requests', icon: Users, badge: requests.length },
-        { id: 'connections', label: 'Chat', icon: MessageCircle },
-        { id: 'profile', label: 'Profile', icon: User },
-    ];
-
-    return (
-        <div className="min-h-screen bg-slate-50 font-sans pb-20">
-            <Toaster />
-            {/* Header */}
-            <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex justify-between items-center">
-                    <div className="flex items-center space-x-2">
-                        <div className="h-9 w-9 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-                            <Sparkles size={18} fill="white" />
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 to-purple-700 tracking-tight leading-none">LifePartner.AI</h1>
-                            <p className="text-[10px] text-gray-500 font-medium tracking-wide">SMART MATCHING</p>
-                        </div>
+    const renderHeader = () => (
+        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border transition-all duration-300">
+            <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground shadow-lg shadow-indigo-500/20">
+                        <Sparkles size={16} fill="white" />
                     </div>
-
-                    {/* Desktop Nav */}
-                    <nav className="hidden md:flex items-center p-1 bg-gray-100/50 rounded-full border border-gray-200/60 backdrop-blur-sm">
-                        {navItems.map((item) => (
-                            <button
-                                key={item.id}
-                                onClick={() => setActiveTab(item.id as any)}
-                                className={`
-                                    relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 ease-out
-                                    ${activeTab === item.id
-                                        ? 'bg-white text-indigo-700 shadow-md ring-1 ring-black/5 transform scale-105'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
-                                    }
-                                `}
-                            >
-                                <item.icon size={16} className={activeTab === item.id ? 'fill-indigo-700/20' : ''} />
-                                {item.label}
-                                {item.badge ? (
-                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full shadow-sm animate-bounce">
-                                        {item.badge}
-                                    </span>
-                                ) : null}
-                            </button>
-                        ))}
-                    </nav>
-
-                    <div className="flex items-center gap-4">
-                        {/* Premium Button */}
-                        {myProfile && !myProfile.is_premium ? (
-                            <button
-                                onClick={() => setShowPremiumModal(true)}
-                                className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 px-3 py-1.5 rounded-lg border border-yellow-300 hover:from-amber-300 hover:to-yellow-500 transition-all shadow-sm"
-                            >
-                                <Crown size={14} fill="currentColor" />
-                                <span className="text-xs font-bold">Upgrade</span>
-                            </button>
-                        ) : myProfile?.is_premium ? (
-                            <div className="hidden sm:flex items-center gap-2 bg-black text-amber-400 px-3 py-1.5 rounded-lg border border-gray-800">
-                                <Crown size={14} fill="currentColor" />
-                                <span className="text-xs font-bold">Premium</span>
-                            </div>
-                        ) : null}
-
-                        {/* Coin Wallet Button */}
-                        <button
-                            onClick={() => setShowCoinStore(true)}
-                            className="hidden sm:flex items-center gap-2 bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-lg border border-yellow-200 hover:bg-yellow-100 transition-colors"
-                        >
-                            <Coins size={14} className="text-yellow-600" />
-                            <span className="text-xs font-bold">{myProfile?.coins || 0}</span>
-                        </button>
-
-                        <div className="hidden sm:flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
-                            <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span className="text-xs font-semibold text-indigo-700">Online</span>
-                        </div>
-
-                        <div className="hidden sm:block">
-                            <NotificationBell />
-                        </div>
-
-                        <div className="h-8 w-[1px] bg-gray-200 hidden sm:block"></div>
-
-                        <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-red-600 font-medium transition-colors flex items-center gap-1 group">
-                            <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
-                            <span className="hidden sm:inline">Logout</span>
-                        </button>
-
-                        <div onClick={() => setActiveTab('profile')} className="h-10 w-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full p-0.5 cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all">
-                            <img
-                                src={myProfile?.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${myProfile?.id || 'me'}`}
-                                className="w-full h-full rounded-full object-cover border-2 border-white"
-                                alt="Me"
-                            />
-                        </div>
-                    </div>
+                    <span className="text-xl font-heading font-bold text-foreground tracking-tight hidden sm:block">LifePartner AI</span>
                 </div>
 
-                {/* Mobile Scrollable Nav */}
-                <div className="md:hidden overflow-x-auto pb-2 px-4 flex gap-2 no-scrollbar border-t border-gray-100 pt-2 bg-white">
-                    {navItems.map((item) => (
-                        <button
-                            key={item.id}
-                            onClick={() => setActiveTab(item.id as any)}
-                            className={`
-                                flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap
-                                ${activeTab === item.id
-                                    ? 'bg-indigo-600 text-white shadow-md'
-                                    : 'bg-gray-50 text-gray-600 border border-gray-200'
-                                }
-                            `}
-                        >
-                            <item.icon size={14} />
-                            {item.label}
-                            {item.badge ? <span className="ml-1 bg-white/20 px-1.5 rounded-full">{item.badge}</span> : null}
-                        </button>
-                    ))}
-                    {/* Fake Nav Item for Premium on Mobile */}
-                    {!myProfile?.is_premium ? (
-                        <button
-                            onClick={() => setShowPremiumModal(true)}
-                            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap bg-gradient-to-r from-amber-200 to-yellow-400 text-yellow-900 border border-yellow-300"
-                        >
-                            <Crown size={14} fill="currentColor" />
-                            Upgrade
-                        </button>
-                    ) : null}
+                {/* Search Bar (Desktop) */}
+                <div className="hidden md:flex flex-1 max-w-md mx-8 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <input
+                        type="text"
+                        placeholder="Search by ID, Name or Profession..."
+                        className="w-full h-10 pl-10 pr-4 rounded-full bg-secondary/10 border border-transparent focus:bg-background focus:border-input focus:ring-2 focus:ring-primary/20 transition-all text-sm font-medium"
+                    />
+                </div>
 
-                    <button
-                        onClick={() => setShowCoinStore(true)}
-                        className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap bg-yellow-50 text-yellow-700 border border-yellow-200"
-                    >
-                        <Coins size={14} />
-                        {myProfile?.coins || 0}
+                <div className="flex items-center gap-4">
+                    <button className="relative w-10 h-10 rounded-full hover:bg-secondary/20 flex items-center justify-center transition-colors">
+                        <Filter size={20} className="text-foreground" />
                     </button>
-                </div>
-            </header>
-
-            <main className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
-                {activeTab === 'matches' ? (
-                    <div className="animate-in fade-in duration-500">
-                        <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-4">
-                            <div>
-                                <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Daily Recommendations</h2>
-                                <p className="text-indigo-600 font-medium mt-1 flex items-center gap-2">
-                                    <Sparkles size={14} /> Curated by AI based on your preferences
-                                </p>
-                            </div>
-
-                            {/* AI Search Bar */}
-                            <div className="w-full md:w-1/2 relative group z-10">
-                                <form
-                                    onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const formData = new FormData(e.currentTarget);
-                                        const q = formData.get('search') as string;
-                                        if (!q) return;
-
-                                        setLoading(true);
-                                        try {
-                                            const res = await api.matches.search(q);
-                                            setMatches(res.matches || []);
-                                            toast.success(`Found ${res.matches?.length || 0} matches!`);
-                                        } catch (err) {
-                                            toast.error("Search failed.");
-                                        } finally {
-                                            setLoading(false);
-                                        }
-                                    }}
-                                    className="relative transition-transform duration-300 focus-within:-translate-y-1"
-                                >
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <Sparkles className="text-indigo-500" size={18} />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        name="search"
-                                        placeholder="Ask AI: 'Find a doctor who loves travel'..."
-                                        className="block w-full pl-12 pr-14 py-4 border-2 border-indigo-50 rounded-2xl leading-5 bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 shadow-sm transition-all text-base"
-                                    />
-                                    <div className="absolute inset-y-0 right-2 flex items-center">
-                                        <button type="submit" className="group p-3 bg-gradient-to-tr from-indigo-600 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-indigo-500/40 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center">
-                                            <Sparkles size={18} className="fill-white/20 group-hover:rotate-12 transition-transform duration-500" />
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        {loading ? (
-                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="h-96 bg-gray-100 rounded-2xl animate-pulse"></div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {matches.map((match) => (
-                                    <MatchCard
-                                        key={match.id}
-                                        match={match}
-                                        onViewProfile={() => setSelectedProfile(match)}
-                                        onStoryClick={() => setViewingStory({ stories: match.stories, initialIndex: 0, user: match })}
-                                    />
-                                ))}
-                            </div>
-                        )}
+                    <NotificationBell />
+                    {/* User Avatar */}
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 p-[2px] cursor-pointer" onClick={() => setActiveTab('profile')}>
+                        <img src="https://i.pravatar.cc/150?img=32" className="rounded-full w-full h-full border-2 border-background" alt="Profile" />
                     </div>
-                ) : activeTab === 'requests' ? (
-                    <div className="animate-in slide-in-from-right-4 duration-300">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                            Connection Requests <span className="bg-red-100 text-red-600 text-sm px-2 py-0.5 rounded-full">{requests.length}</span>
-                        </h2>
-                        {requests.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-                                <div className="bg-gray-50 p-4 rounded-full mb-4">
-                                    <Users size={32} className="text-gray-400" />
-                                </div>
-                                <p className="text-gray-500 font-medium">No pending requests yet.</p>
-                                <button onClick={() => setActiveTab('matches')} className="text-indigo-600 font-bold text-sm mt-3 hover:underline">Browse Matches</button>
-                            </div>
-                        ) : (
-                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {requests.map((req) => (
-                                    <div key={req.interactionId} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                                        <div className="relative mb-4">
-                                            <img
-                                                src={req.fromUser.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${req.fromUser.id}`}
-                                                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                                                alt="User"
-                                            />
-                                            <div className="absolute bottom-1 right-1 bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full border-2 border-white shadow font-bold">New</div>
-                                        </div>
-                                        <h3 className="text-xl font-bold text-gray-900">{req.fromUser.name}</h3>
-                                        <p className="text-sm text-gray-500 mb-6">{req.fromUser.career?.profession || "Member"} • {req.fromUser.age} Yrs</p>
-                                        <div className="flex w-full gap-3">
-                                            <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 h-10 shadow-md font-semibold" onClick={() => handleAccept(req.interactionId)}>Accept</Button>
-                                            <Button variant="outline" className="flex-1 h-10 border-gray-200" onClick={() => handleDecline(req.interactionId)}>Decline</Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                ) : activeTab === 'connections' ? (
-                    <div className="animate-in slide-in-from-right-4 duration-300">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Connections</h2>
-                        {connections.length === 0 ? (
-                            <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-                                <p className="text-gray-500">No connections yet. Keep matching!</p>
-                            </div>
-                        ) : (
-                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {connections.map((conn) => (
-                                    <div key={conn.interactionId} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-md transition-shadow">
-                                        <div className="relative mb-4">
-                                            <img
-                                                src={conn.partner.photoUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${conn.partner.id}`}
-                                                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                                                alt="User"
-                                            />
-                                            <div className="absolute bottom-1 right-1 bg-green-500 w-5 h-5 rounded-full border-2 border-white shadow-sm"></div>
-                                        </div>
-                                        <h3 className="text-xl font-bold text-gray-900">{conn.partner.name}</h3>
-                                        <p className="text-sm text-gray-500 mb-6">{conn.partner.role || "Member"} • {conn.partner.location || "India"}</p>
-                                        <div className="flex w-full gap-3">
-                                            <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700 shadow-md font-semibold h-11" onClick={() => setActiveChat(conn)}>
-                                                <MessageCircle size={18} className="mr-2" /> Chat
-                                            </Button>
-                                            <Button variant="outline" className="w-12 px-0 border-gray-200" onClick={() => { setActiveChat(conn); setIsVideoCall(true); }}>
-                                                <Video size={20} className="text-gray-600" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                ) : activeTab === 'reels' ? (
-                    <div className="animate-in slide-in-from-bottom-4 duration-500">
-                        <div className="text-center mb-10">
-                            <h2 className="text-3xl font-extrabold text-gray-900">Discover Vibes 📹</h2>
-                            <p className="text-gray-500 mt-2 text-lg">Watch short intro reels to find your perfect vibe match</p>
-                        </div>
-                        <ReelFeed />
-                    </div>
-                ) : (
-                    /* My Profile Tab */
-                    <div className="max-w-4xl mx-auto animate-in fade-in duration-300">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                            <div>
-                                <h2 className="text-3xl font-bold text-gray-900">My Profile</h2>
-                                <p className="text-gray-500">Manage your bio, photos, and preferences</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-3 w-full md:w-auto">
-                            <Button
-                                onClick={async () => {
-                                    try {
-                                        await api.wallet.boostProfile();
-                                        toast.success("Profile Boosted! 🚀 30 mins of fame!");
-                                        // Refresh profile
-                                        const me = await api.profile.getMe();
-                                        setMyProfile(me);
-                                    } catch (e: any) {
-                                        toast.error(e.message || "Boost failed (Cost: 50 coins)");
-                                    }
-                                }}
-                                className={`shadow-md flex-1 md:flex-none ${myProfile?.is_boosted ? 'bg-amber-400 hover:bg-amber-500 text-black' : 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600'}`}
-                                disabled={myProfile?.is_boosted}
-                            >
-                                <Sparkles size={16} className="mr-2" />
-                                {myProfile?.is_boosted ? 'Boost Active' : 'Boost (50 🪙)'}
-                            </Button>
-                            <Button onClick={() => setIsEditing(true)} variant="outline" className="shadow-sm flex-1 md:flex-none border-gray-300">Edit Profile</Button>
-                        </div>
-
-
-                        {myProfile && (<>
-                            <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-gray-200">
-                                {/* Profile Header Section */}
-                                <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-10 border-b border-gray-100 pb-8 mb-8">
-                                    {/* Avatar Column */}
-                                    <div className="flex-shrink-0 relative cursor-pointer group" onClick={() => myProfile.stories?.length > 0 && setViewingStory(true)}>
-                                        <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full p-[4px] box-content ${myProfile.stories?.length > 0 ? 'bg-gradient-to-tr from-yellow-400 to-fuchsia-600 animate-spin-slow' : 'border-4 border-white shadow-lg'}`}>
-                                            <div className="w-full h-full rounded-full overflow-hidden border-4 border-white bg-white relative">
-                                                {/* Progress Overlay */}
-                                                {uploadProgress > 0 && (
-                                                    <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center">
-                                                        <div className="text-white text-xs font-bold">{Math.round(uploadProgress)}%</div>
-                                                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
-                                                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="10" />
-                                                            <circle cx="50" cy="50" r="45" fill="none" stroke="#4F46E5" strokeWidth="10" strokeDasharray="283" strokeDashoffset={283 - (283 * uploadProgress) / 100} className="transition-all duration-300" />
-                                                        </svg>
-                                                    </div>
-                                                )}
-                                                {myProfile.photoUrl ? (
-                                                    <img src={myProfile.photoUrl} alt="Me" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-300">
-                                                        <User size={48} />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Upload Button */}
-                                        <label className="absolute bottom-1 right-1 bg-indigo-600 text-white p-2.5 rounded-full shadow-lg cursor-pointer hover:bg-indigo-700 transition-all hover:scale-110 z-10"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <div className="relative">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                                </svg>
-                                            </div>
-                                            <input
-                                                type="file"
-                                                className="hidden"
-                                                accept="image/*,video/*"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (!myProfile.is_premium) {
-                                                        e.preventDefault();
-                                                        setShowPremiumModal(true);
-                                                    }
-                                                }}
-                                                onChange={async (e) => {
-                                                    if (!myProfile.is_premium) {
-                                                        setShowPremiumModal(true);
-                                                        e.target.value = '';
-                                                        return;
-                                                    }
-                                                    await handleStoryUpload(e);
-                                                }}
-                                            />
-                                        </label>
-                                    </div>
-
-                                    {/* Details Column */}
-                                    <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left space-y-3 w-full">
-                                        <div className="space-y-1">
-                                            <h3 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight flex flex-col md:flex-row items-center gap-2 md:gap-3">
-                                                {myProfile.name || "Add Name"}
-                                                {myProfile.is_premium && (
-                                                    <span className="bg-gradient-to-r from-amber-300 to-yellow-500 text-black text-[12px] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm border border-yellow-400 font-extrabold flex items-center gap-1">
-                                                        Premium 👑
-                                                    </span>
-                                                )}
-                                            </h3>
-                                            <p className="text-lg text-gray-500 font-medium">
-                                                {myProfile.location?.city || (typeof myProfile.location === 'string' ? myProfile.location : "Add Location")}
-                                            </p>
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                                            <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                                {myProfile.career?.profession || "Add Profession"}
-                                            </div>
-                                            {myProfile.age && (
-                                                <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-100">
-                                                    {myProfile.age} Years Old
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="pt-2 w-full md:w-auto">
-                                            <Button variant="outline" onClick={() => setSelectedProfile(myProfile)} className="w-full md:w-auto border-gray-300 hover:bg-gray-50">
-                                                Preview Public View
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Rest of the profile content (Stats, Gallery, Reels, Details) remains similar but wrapped properly */}
-                                <div className="space-y-8">
-                                    {/* Connection Stats */}
-                                    <div className="flex items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-100/50">
-                                        <div className="flex items-center gap-4">
-                                            <div className="bg-white p-3 rounded-full shadow-sm text-indigo-600">
-                                                <Users size={24} />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-gray-900 text-lg">{connections.length} Connections</h4>
-                                                <p className="text-sm text-gray-600">People you have matched with</p>
-                                            </div>
-                                        </div>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => setShowConnectionsModal(true)}
-                                            className="bg-white shadow-sm hover:bg-gray-50 text-indigo-700 font-semibold"
-                                        >
-                                            Manage
-                                        </Button>
-                                    </div>
-
-                                    {/* Photos & Reels Sections (Preserving Logic) */}
-                                    {myProfile.photos?.length > 0 && (
-                                        <div>
-                                            <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-lg"><Sparkles size={18} className="text-indigo-500" /> My Photos</h4>
-                                            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-                                                {myProfile.photos.map((photo: string, idx: number) => (
-                                                    <img
-                                                        key={idx}
-                                                        src={photo}
-                                                        alt={`Gallery ${idx}`}
-                                                        className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-xl border border-gray-200 shadow-sm cursor-pointer hover:scale-105 transition-transform"
-                                                        onClick={() => setViewingPhoto(photo)}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {myProfile.reels?.length > 0 && (
-                                        <div>
-                                            <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-lg"><Video size={18} className="text-pink-500" /> My Vibe Reels</h4>
-                                            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-                                                {myProfile.reels.map((url: string, idx: number) => (
-                                                    <div key={idx} className="relative group flex-shrink-0 cursor-pointer" onClick={() => setViewingReel(url)}>
-                                                        <video
-                                                            src={url.startsWith('http') ? url : `http://localhost:4000${url}`}
-                                                            className="w-28 h-48 md:w-36 md:h-60 object-cover rounded-xl border-2 border-indigo-100 shadow-md bg-black hover:opacity-90 transition-opacity"
-                                                            muted
-                                                            onMouseOver={e => e.currentTarget.play()}
-                                                            onMouseOut={e => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
-                                                        />
-                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-xl">
-                                                            <div className="bg-white/20 backdrop-blur-md p-2 rounded-full">
-                                                                <Video size={20} className="text-white" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Details Grid */}
-                                    <div className="grid md:grid-cols-2 gap-6 bg-gray-50/50 rounded-2xl p-6 border border-gray-100">
-                                        <div className="space-y-4">
-                                            <h4 className="font-bold text-gray-900 border-b border-gray-200 pb-2">Personal Details</h4>
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Height</span>
-                                                    <span className="font-medium text-gray-900">{myProfile.height}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Religion</span>
-                                                    <span className="font-medium text-gray-900">{myProfile.religion?.faith || '-'}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Marital Status</span>
-                                                    <span className="font-medium text-gray-900">{myProfile.maritalStatus || 'Never Married'}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Father's Job</span>
-                                                    <span className="font-medium text-gray-900">{myProfile.family?.fatherOccupation || '-'}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Mother Tongue</span>
-                                                    <span className="font-medium text-gray-900">{myProfile.motherTongue || '-'}</span>
-                                                </div>
-                                                <div className="flex justify-between mt-6 pt-6 border-t border-gray-100">
-                                                    <div className="text-center">
-                                                        <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Joined</div>
-                                                        <div className="font-medium">{new Date(myProfile.created_at).toLocaleDateString()}</div>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Status</div>
-                                                        <div className="font-medium text-green-600">Active</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {isEditing && (
-                                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                                    <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-                                        <ProfileEditor initialData={myProfile} onSave={handleProfileSave} onCancel={() => setIsEditing(false)} />
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                        )}
-                    </div>
-                )}
-            </main>
-
-            {/* Story Viewer */}
-            {viewingStory && myProfile?.stories?.length > 0 && (
-                <StoryModal
-                    stories={myProfile.stories}
-                    initialIndex={0}
-                    user={myProfile}
-                    currentUser={myProfile}
-                    onClose={() => setViewingStory(false)}
-                    onDelete={async (storyId: string) => {
-                        try {
-                            await api.interactions.deleteStory(storyId);
-                            setMyProfile((prev: any) => ({
-                                ...prev,
-                                stories: prev.stories.filter((s: any) => s.id !== storyId)
-                            }));
-                            if (myProfile.stories.length <= 1) setViewingStory(false);
-                        } catch (e) {
-                            console.error(e);
-                        }
-                    }}
-                />
-            )}
-
-            {/* Global Modals */}
-            {selectedProfile && (
-                <ProfileModal
-                    profile={selectedProfile}
-                    currentUser={myProfile}
-                    onClose={() => setSelectedProfile(null)}
-                    onConnect={() => {
-                        api.interactions.sendInterest(selectedProfile.id);
-                        setSelectedProfile(null);
-                        toast.success(`Interest sent to ${selectedProfile.name}!`);
-                    }}
-                    onUpgrade={() => {
-                        setSelectedProfile(null);
-                        setShowPremiumModal(true);
-                    }}
-                />
-            )}
-
-            <PremiumModal
-                isOpen={showPremiumModal}
-                onClose={() => setShowPremiumModal(false)}
-                user={myProfile}
-                onSuccess={() => {
-                    toast.success("Welcome to Premium! 👑");
-                    loadData();
-                }}
-            />
-
-            <CoinStoreModal
-                isOpen={showCoinStore}
-                onClose={() => setShowCoinStore(false)}
-                onSuccess={() => {
-                    toast.success("Coins Added!");
-                    loadData();
-                }}
-            />
-
-            {/* Full Screen Reel Player Modal */}
-            {viewingReel && (
-                <div
-                    className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-300"
-                    onClick={() => setViewingReel(null)}
-                >
-                    <div className="relative w-full max-w-[450px] h-[calc(100vh-80px)] max-h-[800px] bg-black rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <div className="absolute top-4 right-4 z-10 flex gap-2">
-                            {/* Reel Action Buttons */}
-                            {myProfile?.reels?.includes(viewingReel) && (
-                                <button
-                                    className="bg-red-600/80 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-lg"
-                                    onClick={async (e) => {
-                                        e.stopPropagation();
-                                        if (confirm("Delete this reel?")) {
-                                            try {
-                                                await api.profile.deleteReel(viewingReel);
-                                                toast.success("Reel deleted");
-                                                setViewingReel(null);
-                                                const u = await api.profile.getMe();
-                                                setMyProfile(u);
-                                            } catch (err) {
-                                                toast.error("Failed to delete reel");
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <Trash2 size={20} />
-                                </button>
-                            )}
-                            <button
-                                className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                                onClick={() => setViewingReel(null)}
-                            >
-                                <X size={24} />
-                            </button>
-                        </div>
-                        <video
-                            src={viewingReel.startsWith('http') ? viewingReel : `http://localhost:4000${viewingReel}`}
-                            className="w-full h-full object-contain"
-                            controls
-                            autoPlay
-                        />
-                    </div>
-                </div>
-            )}
-
-            {/* Chat & Video Modals */}
-            {activeChat && !isVideoCall && (
-                <ChatWindow
-                    connectionId={activeChat.interactionId}
-                    partner={activeChat.partner}
-                    onClose={() => setActiveChat(null)}
-                    onVideoCall={() => setIsVideoCall(true)}
-                />
-            )}
-
-
-            {activeChat && isVideoCall && (
-                <VideoCallModal
-                    connectionId={activeChat.interactionId}
-                    partner={activeChat.partner}
-                    onEndCall={() => setIsVideoCall(false)}
-                />
-            )}
-
-            {/* Connections Modal */}
-            {showConnectionsModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]">
-                        <div className="flex items-center justify-between p-4 border-b">
-                            <h3 className="font-bold text-lg">My Connections</h3>
-                            <button onClick={() => setShowConnectionsModal(false)} className="p-1 hover:bg-gray-100 rounded-full">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                            {connections.length === 0 ? (
-                                <p className="text-center text-gray-500 py-8">No connections yet.</p>
-                            ) : (
-                                connections.map(c => (
-                                    <div key={c.interactionId} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                        <div className="flex items-center gap-3">
-                                            <img src={c.partner.photoUrl} className="w-10 h-10 rounded-full object-cover" alt="" />
-                                            <div>
-                                                <div className="font-bold">{c.partner.name}</div>
-                                                <div className="text-xs text-gray-500">Connected</div>
-                                            </div>
-                                        </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                            onClick={async () => {
-                                                if (!confirm("Are you sure you want to remove this connection?")) return;
-                                                try {
-                                                    await api.interactions.deleteConnection(c.interactionId);
-                                                    setConnections(prev => prev.filter(x => x.interactionId !== c.interactionId));
-                                                    toast.success("Connection removed.");
-                                                } catch (e) {
-                                                    toast.error("Failed to remove connection.");
-                                                }
-                                            }}
-                                        >
-                                            <Trash2 size={16} />
-                                        </Button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Photo Viewer */}
-            {viewingPhoto && (
-                <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingPhoto(null)}>
-                    <button className="absolute top-4 right-4 text-white/80 hover:text-white" onClick={() => setViewingPhoto(null)}>
-                        <X size={32} />
-                    </button>
-                    <img src={viewingPhoto} alt="Full View" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={e => e.stopPropagation()} />
-                </div>
-            )}
-
-        </div >
-    );
-}
-
-// Sub-component for Story Viewer
-const StoryModal = ({ stories, initialIndex, user, onClose, currentUser, onDelete }: any) => {
-    const [currentIndex, setCurrentIndex] = useState(initialIndex);
-    const [progress, setProgress] = useState(0);
-    const story = stories[currentIndex];
-
-    // Auto-advance Timer
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setProgress((prev) => {
-                if (prev >= 100) return 100;
-                return prev + 1;
-            });
-        }, 40); // Slightly faster for smoother feel
-
-        return () => clearInterval(timer);
-    }, [currentIndex]); // Restart timer on index change
-
-    // Handle Story Completion
-    useEffect(() => {
-        if (progress >= 100) {
-            if (currentIndex < stories.length - 1) {
-                setCurrentIndex((prev: number) => prev + 1);
-                setProgress(0); // Reset progress immediately for next story
-            } else {
-                onClose();
-            }
-        }
-    }, [progress, currentIndex, stories.length, onClose]);
-
-    if (!story) return null;
-
-    return (
-        <div className="fixed inset-0 z-[80] bg-black flex flex-col items-center justify-center animate-in fade-in duration-300">
-            {/* Header */}
-            <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20 text-white">
-                <div className="flex items-center gap-3">
-                    <img src={user.photoUrl || user.avatar_url} className="w-10 h-10 rounded-full border border-white/50" alt="" />
-                    <span className="font-bold">{user.name || user.full_name}</span>
-                    <span className="text-sm opacity-70">• {new Date(story.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <div className="flex gap-4">
-                    {user.id === currentUser?.id && (
-                        <button onClick={() => onDelete(story.id)} className="p-2 hover:bg-white/20 rounded-full"><Trash2 size={20} /></button>
-                    )}
-                    <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
                 </div>
             </div>
+        </header>
+    );
 
-            {/* Progress Bars */}
-            <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
-                {stories.map((s: any, idx: number) => (
-                    <div key={s.id} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
-                        <div
-                            className={`h-full bg-white transition-all linear duration-75`}
-                            style={{
-                                width: idx === currentIndex ? `${progress}%` : idx < currentIndex ? '100%' : '0%'
+    const renderStories = () => (
+        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar px-4 pt-2">
+            {/* My Story */}
+            <div className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer group">
+                <div className="w-16 h-16 rounded-full p-[2px] border-2 border-dashed border-gray-300 group-hover:border-primary transition-colors relative">
+                    <div className="w-full h-full rounded-full bg-secondary/10 flex items-center justify-center text-primary">
+                        +
+                    </div>
+                </div>
+                <span className="text-xs font-medium text-gray-500">Your Story</span>
+            </div>
+
+            {/* Other Stories */}
+            {STORIES.map((story, i) => (
+                <div key={story.id} className="flex flex-col items-center gap-2 flex-shrink-0 cursor-pointer" onClick={() => setCurrentStoryIndex(i)}>
+                    <div className={`w-16 h-16 rounded-full p-[2px] ${story.hasStory ? 'bg-gradient-to-tr from-yellow-400 to-fuchsia-600' : 'bg-gray-200'} transition-transform hover:scale-105`}>
+                        <div className="w-full h-full rounded-full p-[2px] bg-background">
+                            <img src={story.img} className="w-full h-full rounded-full object-cover" alt={story.user} />
+                        </div>
+                    </div>
+                    <span className="text-xs font-medium text-foreground">{story.user}</span>
+                </div>
+            ))}
+        </div>
+    );
+
+    const renderEventsSidebar = () => (
+        <div className="hidden lg:block w-80 flex-shrink-0 space-y-6">
+            <div className="bg-card rounded-2xl p-5 border border-border/50 shadow-sm sticky top-24">
+                <h3 className="font-heading font-bold text-lg mb-4 text-foreground flex items-center gap-2">
+                    Coming Up <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-sans">Events</span>
+                </h3>
+                <div className="space-y-4">
+                    {EVENTS.map(event => (
+                        <div key={event.id} className="group cursor-pointer">
+                            <div className="relative h-32 rounded-xl overflow-hidden mb-3">
+                                <img src={event.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={event.title} />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-3">
+                                    <span className="text-white text-xs font-bold bg-black/50 backdrop-blur-md px-2 py-1 rounded-md">{event.date} • {event.time}</span>
+                                </div>
+                            </div>
+                            <h4 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">{event.title}</h4>
+                            <button className="mt-2 w-full py-1.5 rounded-lg border border-primary/20 text-primary text-xs font-bold hover:bg-primary hover:text-white transition-all">RSVP Now</button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderDiscoveryFeed = () => {
+        if (loading) {
+            return (
+                <div className="max-w-2xl mx-auto space-y-8 pt-10">
+                    {[1, 2].map(i => (
+                        <div key={i} className="h-[500px] w-full bg-secondary/10 rounded-3xl animate-pulse"></div>
+                    ))}
+                </div>
+            );
+        }
+
+        return (
+            <div className="max-w-xl mx-auto space-y-8 pb-32">
+                {/* Header for Feed */}
+                <div className="flex items-center justify-between px-2">
+                    <h2 className="text-2xl font-heading font-bold text-foreground">Daily Recommendations</h2>
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{matches.length} matches</span>
+                </div>
+
+                {matches.map((match) => (
+                    <div key={match.id} className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+                        <MatchCard
+                            match={match}
+                            onConnect={() => {
+                                // Refresh matches or remove card locally
+                                setMatches(prev => prev.map(m => m.id === match.id ? { ...m, match_status: 'pending' } : m));
+                            }}
+                            onViewProfile={() => router.push(`/profile/${match.id}`)}
+                            onStoryClick={() => {
+                                // Open story logic for the match if they have updates
                             }}
                         />
+                        {/* Inline Actions for Quick Access on Mobile */}
+                        <div className="flex items-center justify-between px-4 mt-3 md:hidden">
+                            <div className="flex gap-4 text-xs font-medium text-gray-500">
+                                <span className="flex items-center gap-1"><Briefcase size={14} /> {match.role}</span>
+                                <span className="flex items-center gap-1"><MapPin size={14} /> {match.location?.city}</span>
+                                <span className="flex items-center gap-1"><Ruler size={14} /> {match.height}</span>
+                            </div>
+                        </div>
                     </div>
                 ))}
-            </div>
 
-            {/* Content */}
-            <div className="relative w-full h-full max-w-lg bg-black flex items-center justify-center">
-                {story.type === 'video' ? (
-                    <video
-                        src={story.url}
-                        className="w-full h-full object-contain"
-                        autoPlay
-                        muted={false} // Allow sound?
-                    />
-                ) : (
-                    <img src={story.url} className="w-full h-full object-contain" alt="" />
+                {matches.length === 0 && (
+                    <div className="text-center py-20">
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Search className="text-gray-400" size={32} />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900">No New Matches</h3>
+                        <p className="text-gray-500">Check back later or adjust your preferences.</p>
+                    </div>
                 )}
-
-                {/* Navigation Tap Zones */}
-                <div className="absolute inset-y-0 left-0 w-1/3 z-10" onClick={() => currentIndex > 0 && setCurrentIndex((p: number) => p - 1)}></div>
-                <div className="absolute inset-y-0 right-0 w-1/3 z-10" onClick={() => currentIndex < stories.length - 1 ? setCurrentIndex((p: number) => p + 1) : onClose()}></div>
             </div>
-        </div>
-    );
-};
+        );
+    };
 
-interface ConnectionsModalProps {
-    connections: any[];
-    onClose: () => void;
-    onDelete: (id: string) => void;
-    onChat: (conn: any) => void;
-}
 
-// Connections Management Modal
-const ConnectionsModal = ({ connections, onClose, onDelete, onChat }: ConnectionsModalProps) => {
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[80vh]">
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-bold text-lg text-gray-900">Manage Connections</h3>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
+        <div className="min-h-screen bg-background font-sans text-foreground pb-safe">
+            {renderHeader()}
+
+            <main className="max-w-7xl mx-auto pt-6 px-4 lg:px-8 flex gap-8">
+                {/* Main Feed Column */}
+                <div className="flex-1 min-w-0">
+
+                    {/* Stories Bar */}
+                    <div className="mb-8">
+                        {renderStories()}
+                    </div>
+
+                    {activeTab === 'matches' && renderDiscoveryFeed()}
+
+                    {/* Other Tabs (Placeholder for now) */}
+                    {activeTab === 'reels' && <div className="text-center py-20 text-gray-500">Reels Feed (Coming Soon)</div>}
+                    {activeTab === 'requests' && <div className="text-center py-20 text-gray-500">Requests (Coming Soon)</div>}
+                    {activeTab === 'connections' && <div className="text-center py-20 text-gray-500">Chat (Coming Soon)</div>}
+                    {activeTab === 'profile' && <div className="text-center py-20 text-gray-500">Profile (Coming Soon)</div>}
                 </div>
-                <div className="overflow-y-auto p-4 space-y-3 flex-1">
-                    {connections.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">No connections yet.</div>
-                    ) : (
-                        connections.map((c: any) => (
-                            <div key={c.interactionId} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
-                                <div className="flex items-center gap-3">
-                                    <img src={c.partner.photoUrl} className="w-12 h-12 rounded-full object-cover border border-white shadow-sm" alt="" />
-                                    <div>
-                                        <h4 className="font-bold text-gray-900 text-sm">{c.partner.name}</h4>
-                                        <p className="text-xs text-gray-500">{c.partner.role || 'Member'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50" onClick={() => onChat(c)}>
-                                        <MessageCircle size={16} />
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600"
-                                        onClick={() => onDelete(c.interactionId)}
-                                    >
-                                        <Trash2 size={16} />
-                                    </Button>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-                <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-                    <Button className="w-full" onClick={onClose}>Done</Button>
-                </div>
-            </div>
+
+                {renderEventsSidebar()}
+            </main>
+
+            <BottomNav
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                requestsCount={requestsCount}
+            />
+
+            {/* Modals */}
+            {currentStoryIndex !== null && (
+                <StoryModal
+                    initialIndex={0}
+                    stories={[{
+                        id: STORIES[currentStoryIndex].id,
+                        url: 'https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-sign-1232-large.mp4',
+                        type: 'video',
+                        createdAt: new Date().toISOString()
+                    }]}
+                    user={{
+                        id: STORIES[currentStoryIndex].id,
+                        name: STORIES[currentStoryIndex].user,
+                        photoUrl: STORIES[currentStoryIndex].img
+                    }}
+                    currentUser={{ id: 'me' }}
+                    onClose={() => setCurrentStoryIndex(null)}
+                    onDelete={() => { }}
+                />
+            )}
         </div>
     );
-};
+}
